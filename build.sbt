@@ -9,14 +9,25 @@ val root = project
     githubRepository := "md4s",
     scalacOptions ++= Seq(
       "-rewrite",
-      "-source", "future"
+      "-source", "future",
+      "-encoding", "utf8",
+    ),
+    testOptions += Tests.Argument(
+      framework = Some(new TestFramework("munit.Framework")),
+      args = List("-oSD")
+    ),
+    resolvers ++= Seq(
+      "jitpack" at "https://jitpack.io",
+      Resolver.githubPackages("wlad031"),
     ),
     libraryDependencies ++= {
       val munitVersion = "0.7.29"
       Seq(
-        "org.scalameta" %% "munit"            % munitVersion % Test,
-        "org.scalameta" %% "munit-scalacheck" % munitVersion % Test
+        "dev.vgerasimov" %% "slowparse"        % "0.1.3",
+        "com.lihaoyi"    %% "pprint"           % "0.7.0",
+        "org.scalameta"  %% "munit"            % munitVersion % Test,
+        "org.scalameta"  %% "munit-scalacheck" % munitVersion % Test
       )
     },
   )
-  
+ 
