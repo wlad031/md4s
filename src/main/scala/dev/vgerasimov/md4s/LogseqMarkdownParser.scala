@@ -402,20 +402,20 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
     import models.elements.NodeProperty
     import models.greater_elements.PropertyDrawer
 
-    private def nodePropertyName: P[String] =
-      P(":") ~ (!(P("END") | P("+") | P(":") | eol | end) ~ anyChar).rep(1).! ~ P("+").?.!! ~ P(":")
+    private def nodePropertyName: P[String] = until(P("::")).!
     private def nodePropertyValue: P[String] = charsUntilEol
 
     def nodeProperty: P[NodeProperty] =
       (
         nodePropertyName
+          ~ P("::") 
           ~ s0
           ~ nodePropertyValue.?.map(_.filter(_.nonEmpty))
           ~ eol
       ).map { case (name: String, value: Option[String]) => NodeProperty(name, value) }
 
     def propertyDrawer: P[PropertyDrawer] =
-      (s0 ~ P(":PROPERTIES:") ~ eol ~ (s0 ~ nodeProperty).rep() ~ s0 ~ P(":END:") ~ eolOrEnd)
+      (s0 ~ (s0 ~ nodeProperty).+ ~ eolOrEnd)
         .map(_.toList)
         .map(PropertyDrawer.apply)
   }
@@ -455,7 +455,7 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
     table.table | plainList.plainList() | emptyLines() | paragraph.paragraph
 
   private def anyDocumentSectionElement: P[Element] =
-    anySectionElement
+    propertyDrawer.propertyDrawer | anySectionElement
 
   private def emptyLines(max: Option[Int] = None): P[EmptyLines] =
     max

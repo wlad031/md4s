@@ -9,9 +9,15 @@ object Hello:
 @main def run = 
   val parser = new LogseqMarkdownParser().document
   var parsed = parser(
-"""- Started new [supplements]([[Supplement]])
-  - Started [[CoQ10]] 60 mg daily
-  - Started [[L-Carnitine]] again, 4000 mg daily
-	- Started [[Berberine]] again, 400 mg daily
+"""type:: [[Media/Movie]]
+  alias:: Uncharted
+  status:: [[DONE]]
+  rating:: 3
+  done-date:: [[2023-11-12]]
+-
+- # Cast
+	- [[Том Холланд]]
+	- [[Марк Уолберг]]
+	- [[Антонио Бандерас]]
 """)
   pprint.pprintln(parsed)
