@@ -6,10 +6,9 @@ import dev.vgerasimov.md4s.LogseqMarkdownParser
 object Hello:
   def apply(s: String): String = s"Hello $s!"
 
-@main def run = 
+@main def run =
   val parser = new LogseqMarkdownParser().document
-  var parsed = parser(
-"""type:: [[Media/Movie]]
+  var parsed = parser("""type:: [[Media/Movie]]
   alias:: Uncharted
   status:: [[DONE]]
   rating:: 3

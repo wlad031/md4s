@@ -3,23 +3,23 @@ package dev.vgerasimov.md4s
 /** Configuration of a Logseq Markdown document. */
 case class LogseqMarkdownContext(
   statusKeywords: LogseqMarkdownContext.StatusKeywords,
-  linkTypes: Seq[String],
+  linkTypes: Seq[String]
 )
 
 object LogseqMarkdownContext {
 
   /** Contains default values for all fields of the [[LogseqMarkdownContext]]. */
   object default {
-    val statusKeywords: StatusKeywords = 
+    val statusKeywords: StatusKeywords =
       StatusKeywords(Set("TODO", "DOING", "DONE"))
-    val linkTypes: Seq[String] = 
+    val linkTypes: Seq[String] =
       Seq("https", "http", "file")
   }
 
   /** Default instance of [[OrgContext]]. */
   val defaultCtx: LogseqMarkdownContext = LogseqMarkdownContext(
     statusKeywords = default.statusKeywords,
-    linkTypes = default.linkTypes,
+    linkTypes = default.linkTypes
   )
 
   /** Contains collections of valid "to-do" keywords. */

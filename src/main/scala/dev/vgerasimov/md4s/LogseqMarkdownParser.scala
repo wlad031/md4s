@@ -381,7 +381,7 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
     def nodeProperty: P[NodeProperty] =
       (
         nodePropertyName
-          ~ P("::") 
+          ~ P("::")
           ~ s0
           ~ nodePropertyValue.?.map(_.filter(_.nonEmpty))
           ~ eol
