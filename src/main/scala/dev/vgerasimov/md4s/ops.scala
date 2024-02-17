@@ -11,7 +11,7 @@ object ops {
   object table {
     import models.elements.TableRow
     import models.elements.TableRow.{ TableRowCells, TableSep }
-    import models.greater_elements.Table
+    import models.elements.Table
     import models.objects.TableCell
 
     implicit class TableOps(table: Table) {

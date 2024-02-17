@@ -1,6 +1,11 @@
 package dev.vgerasimov.md4s
 
 object models {
+  import elements.*
+  import objects.*
+
+  sealed trait Element
+  sealed trait MdObject
 
   /** Main entity representing entire Markdown document.
     *
@@ -27,27 +32,20 @@ object models {
     status: Option[Headline.Status] = None,
     priority: Option[Headline.Priority] = None,
     title: Option[Headline.Title] = None
-  ) {
+  ) extends Element {
     require(level > 0, "Headline level cannot be less than 1")
   }
 
   /** Contains [[Headline]]'s inner models. */
   object Headline {
-
-    /** Represents headline "to-do" keyword. */
     case class Status(value: String)
-
-    /** Represents headline priority cookie. */
     case class Priority(value: Char)
 
-    /** Represents headline title. */
     case class Title(contents: List[Title.Content])
     object Title {
 
-      /** Creates [[Title]] from the given string. */
       def apply(text: String): Title = new Title(List(objects.Text(text)))
 
-      /** Represents any content headline title can contain. */
       sealed trait Content
     }
   }
@@ -70,7 +68,7 @@ object models {
     elements: List[Element] = Nil,
     childSections: List[Section] = Nil,
     planning: Option[Planning] = None,
-    propertyDrawer: Option[greater_elements.PropertyDrawer] = None
+    propertyDrawer: Option[PropertyDrawer] = None
   )
 
   case class Planning(info: List[Planning.Info]) extends Element
@@ -85,22 +83,39 @@ object models {
     }
   }
 
-  sealed trait GreaterElement extends Element
+  /** Contains implementations for [[Element]]s. */
+  object elements {
 
-  sealed trait Element
+    case class EmptyLines(length: Int) extends Element
 
-  sealed trait MdObject
+    case class HorizontalRuler(length: Int) extends Element {
+      require(length >= 3, "Horizontal ruler should be 3 or more characters long")
+    }
 
-  /** Contains implementations for [[GreaterElement]]s. */
-  object greater_elements {
+    case class Paragraph(objects: List[MdObject]) extends Element {
+      def ++ (that: Paragraph): Paragraph = Paragraph(this.objects ++ that.objects)
+    }
 
-    case class PropertyDrawer(nodes: List[elements.NodeProperty]) extends GreaterElement
+    case class Comments(lines: List[Comments.Line]) extends Element
+    object Comments {
+      case class Line(value: String)
+    }
+
+    sealed trait TableRow
+    object TableRow {
+      case object TableSep extends TableRow
+      case class TableRowCells(cells: List[TableCell]) extends TableRow
+    }
+
+    case class NodeProperty(name: String, value: Option[String] = None) extends Element
+
+    case class PropertyDrawer(nodes: List[NodeProperty]) extends Element
 
     case class Table(
       rows: List[elements.TableRow]
-    ) extends GreaterElement
+    ) extends Element
 
-    sealed trait PlainList extends GreaterElement
+    sealed trait PlainList extends Element
     object PlainList {
       case class Item(
         indentation: Int,
@@ -134,33 +149,6 @@ object models {
     }
   }
 
-  /** Contains implementations for [[Element]]s. */
-  object elements {
-
-    case class EmptyLines(length: Int) extends Element
-
-    case class HorizontalRuler(length: Int) extends Element {
-      require(length >= 5, "Horizontal ruler should be 5 or more characters long")
-    }
-
-    case class Paragraph(objects: List[MdObject]) extends Element {
-      def ++ (that: Paragraph): Paragraph = Paragraph(this.objects ++ that.objects)
-    }
-
-    case class Comments(lines: List[Comments.Line]) extends Element
-    object Comments {
-      case class Line(value: String)
-    }
-
-    sealed trait TableRow
-    object TableRow {
-      case object TableSep extends TableRow
-      case class TableRowCells(cells: List[objects.TableCell]) extends TableRow
-    }
-
-    case class NodeProperty(name: String, value: Option[String] = None) extends Element
-  }
-
   /** Contains implementations for [[MdObject]]s. */
   object objects {
     case object LineBreak extends MdObject
@@ -169,7 +157,7 @@ object models {
         extends MdObject
         with Headline.Title.Content
         with TextMarkup.Content
-        with greater_elements.PlainList.Content {
+        with elements.PlainList.Content {
       override def toString: String = value
 
       def ++ (that: Text): Text = Text(this.value + that.value)
@@ -217,7 +205,7 @@ object models {
         extends MdObject
         with Headline.Title.Content
         with TextMarkup.Content
-        with greater_elements.PlainList.Content {
+        with elements.PlainList.Content {
       override def toString: String = s"MT($marker${contents}$marker)"
     }
 
@@ -264,13 +252,13 @@ object models {
     ) extends MdObject
         with Headline.Title.Content
         with TextMarkup.Content
-        with greater_elements.PlainList.Content
+        with elements.PlainList.Content
 
     sealed trait Timestamp
         extends MdObject
         with Headline.Title.Content
         with TextMarkup.Content
-        with greater_elements.PlainList.Content
+        with elements.PlainList.Content
 
     object Timestamp {
       sealed trait Active extends Timestamp
@@ -504,36 +492,9 @@ object models {
       case class WithDuration(timestamp: Timestamp.Inactive, duration: Duration) extends Clock
     }
 
-    sealed trait StatCookie extends MdObject with Headline.Title.Content
-    object StatCookie {
-
-      case object EmptyPercent extends StatCookie
-      case object EmptyFractional extends StatCookie
-
-      case class Percent(value: Int) extends StatCookie {
-        require(Percent.isValid(value), s"Invalid percent stat cookie value: $value")
-      }
-
-      object Percent {
-        def isValid(percent: Int): Boolean = 0 <= percent && percent <= 100
-      }
-
-      case class Fractional(amount: Int, total: Int) extends StatCookie {
-        require(
-          Fractional.isValid(amount, total),
-          s"Invalid values of fractional stat cookie: amount=$amount, total=$total"
-        )
-      }
-
-      object Fractional {
-        def isValid(amount: Int, total: Int): Boolean = 0 <= amount && 0 <= total && amount <= total
-      }
-    }
-
     case class TableCell(value: String)
 
     case class Target(target: String)
     case class RadioTarget(contents: String)
   }
-
 }

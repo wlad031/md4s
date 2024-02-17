@@ -1,8 +1,7 @@
 package dev.vgerasimov.md4s
 
 import dev.vgerasimov.md4s.models.*
-import dev.vgerasimov.md4s.models.elements.{ EmptyLines, Paragraph }
-import dev.vgerasimov.md4s.models.greater_elements.PlainList
+import dev.vgerasimov.md4s.models.elements.{ EmptyLines, Paragraph, PlainList }
 import dev.vgerasimov.md4s.models.objects.*
 import dev.vgerasimov.md4s.ops.*
 
@@ -152,9 +151,8 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
   }
 
   private[md4s] object table {
-    import models.elements.TableRow
+    import models.elements.{ Table, TableRow }
     import models.elements.TableRow.*
-    import models.greater_elements.Table
     import models.objects.TableCell
 
     def table: P[Table] = P(tableOrg)
@@ -246,30 +244,6 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
       ).map { case c => Link(None, c, None) }
   }
 
-  private[md4s] object cookies {
-    import models.objects.StatCookie
-
-    def emptyPercentCookie: P[StatCookie.EmptyPercent.type] =
-      P("[%]").map(_ => StatCookie.EmptyPercent)
-
-    def percentCookie: P[StatCookie.Percent] =
-      (P("[") ~ d.rep(1).! ~ P("%]"))
-        .map(_.toInt)
-        .filter(StatCookie.Percent.isValid)
-        .map(StatCookie.Percent.apply)
-
-    def emptyFractionalCookie: P[StatCookie.EmptyFractional.type] =
-      P("[/]").map(_ => StatCookie.EmptyFractional)
-
-    def fractionalCookie: P[StatCookie.Fractional] =
-      (P("[") ~ d.rep(1).! ~ P("/") ~ d.rep(1).! ~ P("]")).map { case (s1, s2) => (s1.toInt, s2.toInt) }.filter {
-        case (v1, v2) => StatCookie.Fractional.isValid(v1, v2)
-      }.map { case (v1, v2) => StatCookie.Fractional(v1, v2) }
-
-    def statCookie: P[StatCookie] =
-      emptyPercentCookie | emptyFractionalCookie | percentCookie | fractionalCookie
-  }
-
   private[md4s] object headline {
     import models.Headline.*
 
@@ -298,7 +272,6 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
       (
         timestamp.timestamp
           | markup.textMarkup
-          | cookies.statCookie
           | (!(eol | tags) ~ anyChar.!.map(Text.apply))
       ).rep(1)
         .map(_.toList)
@@ -330,7 +303,7 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
   }
 
   private[md4s] object plainList {
-    import models.greater_elements.PlainList.*
+    import models.elements.PlainList.*
 
     def counter: P[Counter] = (d.rep(1) | fromRange("a-zA-Z")).!.map(Counter.apply)
 
@@ -400,7 +373,7 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
 
   private[md4s] object propertyDrawer {
     import models.elements.NodeProperty
-    import models.greater_elements.PropertyDrawer
+    import models.elements.PropertyDrawer
 
     private def nodePropertyName: P[String] = until(P("::")).!
     private def nodePropertyValue: P[String] = charsUntilEol
