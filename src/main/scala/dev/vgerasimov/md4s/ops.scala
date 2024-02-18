@@ -24,7 +24,9 @@ object ops {
     }
 
     implicit class TableRowCellsOps(tableRowCells: TableRowCells) {
-      def | (cell: TableCell): TableRowCells = TableRowCells(tableRowCells.cells ++ List(cell))
+      def | (cell: TableCell): TableRowCells = TableRowCells(
+        tableRowCells.cells ++ List(cell)
+      )
     }
 
     implicit class TableCellOps(cell: TableCell) {
@@ -36,7 +38,10 @@ object ops {
     def sep: TableSep.type = TableSep
   }
 
-  private def fold[A >: B, B : ClassTag](objects: List[A], op: (B, B) => B): List[A] = {
+  private def fold[A >: B, B : ClassTag](
+    objects: List[A],
+    op: (B, B) => B
+  ): List[A] = {
     def aIsB(a: A): Boolean = classTag[B].runtimeClass.isInstance(a)
     objects
       .foldLeft[List[A]](Nil)((ls, item) =>
@@ -44,7 +49,8 @@ object ops {
           case x if aIsB(x) =>
             ls match {
               case ::(head, next) =>
-                if (aIsB(head)) op(head.asInstanceOf[B], x.asInstanceOf[B]) :: next
+                if (aIsB(head))
+                  op(head.asInstanceOf[B], x.asInstanceOf[B]) :: next
                 else x :: head :: next
               case Nil => List(x)
             }

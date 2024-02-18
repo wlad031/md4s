@@ -8,7 +8,9 @@ import dev.vgerasimov.md4s.ops.*
 import dev.vgerasimov.slowparse.*
 import dev.vgerasimov.slowparse.Parsers.{ *, given }
 
-class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.defaultCtx) {
+class LogseqMarkdownParser(
+  ctx: LogseqMarkdownContext = LogseqMarkdownContext.defaultCtx
+) {
 
   private[md4s] object timestamp {
     import models.objects.Timestamp.Date.*
@@ -64,13 +66,18 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
         .map(_.get)
 
     def date: P[Date] =
-      (year ~ P("-") ~ month ~ P("-") ~ day ~ (P(" ") ~ dayName).?).filter { case (year, month, day, _) =>
-        Date.isValid(year, month, day)
-      }.map { case (year, month, day, dayName) => Date(year, month, day, dayName) }
+      (year ~ P("-") ~ month ~ P("-") ~ day ~ (P(" ") ~ dayName).?).filter {
+        case (year, month, day, _) =>
+          Date.isValid(year, month, day)
+      }.map { case (year, month, day, dayName) =>
+        Date(year, month, day, dayName)
+      }
 
-    def diary: P[Diary] = (P("<%%(") ~ charsUntilIn("\n>") ~ P(")>")).map(Diary.apply)
+    def diary: P[Diary] =
+      (P("<%%(") ~ charsUntilIn("\n>") ~ P(")>")).map(Diary.apply)
 
-    def repeaterMark: P[(RepeaterOrDelay.Value, RepeaterOrDelay.Unit) => RepeaterOrDelay] =
+    def repeaterMark
+      : P[(RepeaterOrDelay.Value, RepeaterOrDelay.Unit) => RepeaterOrDelay] =
       (
         P("++").map(_ => RepeaterOrDelay.CatchUpRepeater.apply)
         | P("+").map(_ => RepeaterOrDelay.CumulateRepeater.apply)
@@ -92,7 +99,9 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
         .map(_.get)
 
     def repeaterOrDelay: P[RepeaterOrDelay] =
-      (repeaterMark ~ repeaterValue ~ repeaterUnit).map { case (factory, value, unit) => factory(value, unit) }
+      (repeaterMark ~ repeaterValue ~ repeaterUnit).map {
+        case (factory, value, unit) => factory(value, unit)
+      }
 
     def timestamp: P[Timestamp] =
       (
@@ -104,40 +113,56 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
       )
 
     def activeTimestamp: P[ActiveTimestamp] =
-      (P("<") ~ date ~ (s ~ time).? ~ (s ~ repeaterOrDelay).? ~ P(">")).map { case (d, t, r) =>
-        ActiveTimestamp(d, t, r)
+      (P("<") ~ date ~ (s ~ time).? ~ (s ~ repeaterOrDelay).? ~ P(">")).map {
+        case (d, t, r) =>
+          ActiveTimestamp(d, t, r)
       }
 
     def inactiveTimestamp: P[InactiveTimestamp] =
-      (P("[") ~ date ~ (s ~ time).? ~ (s ~ repeaterOrDelay).? ~ P("]")).map { case (d, t, r) =>
-        InactiveTimestamp(d, t, r)
+      (P("[") ~ date ~ (s ~ time).? ~ (s ~ repeaterOrDelay).? ~ P("]")).map {
+        case (d, t, r) =>
+          InactiveTimestamp(d, t, r)
       }
 
     def activeTimestampRange: P[ActiveTimestampRange] =
       (
-        (activeTimestamp ~ P("-").rep(min = 1, max = 3).!! ~ activeTimestamp).map {
-          case (from: ActiveTimestamp, to: ActiveTimestamp) => ActiveTimestampRange(from, to)
+        (activeTimestamp ~ P("-")
+          .rep(min = 1, max = 3)
+          .!! ~ activeTimestamp).map {
+          case (from: ActiveTimestamp, to: ActiveTimestamp) =>
+            ActiveTimestampRange(from, to)
         }
-        | P(P("<") ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P(">")).map { case (d, t1, t2, r) =>
+        | P(
+          P("<") ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P(">")
+        ).map { case (d, t1, t2, r) =>
           ActiveTimestampRange(ActiveTimestamp(d, Some(t1), r), t2)
         }
       )
 
     def inactiveTimestampRange: P[InactiveTimestampRange] =
       (
-        (inactiveTimestamp ~ P("-").rep(min = 1, max = 3).!! ~ inactiveTimestamp).map {
-          case (from: InactiveTimestamp, to: InactiveTimestamp) => InactiveTimestampRange(from, to)
+        (inactiveTimestamp ~ P("-")
+          .rep(min = 1, max = 3)
+          .!! ~ inactiveTimestamp).map {
+          case (from: InactiveTimestamp, to: InactiveTimestamp) =>
+            InactiveTimestampRange(from, to)
         }
         |
-        (P("[") ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P("]")).map { case (d, t1, t2, r) =>
+        (P("[") ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P(
+          "]"
+        )).map { case (d, t1, t2, r) =>
           InactiveTimestampRange(InactiveTimestamp(d, Some(t1), r), t2)
         }
       )
   }
 
   private[md4s] object planning {
-    private def info[A <: Planning.Info](keyword: String, f: Timestamp => A): P[A] =
-      (s.rep().!! ~ P(keyword) ~ P(": ") ~ timestamp.timestamp ~ eolOrEnd).map(f)
+    private def info[A <: Planning.Info](
+      keyword: String,
+      f: Timestamp => A
+    ): P[A] =
+      (s.rep().!! ~ P(keyword) ~ P(": ") ~ timestamp.timestamp ~ eolOrEnd)
+        .map(f)
 
     def deadlineInfo: P[Planning.Info.Deadline] =
       info("DEADLINE", Planning.Info.Deadline.apply)
@@ -147,7 +172,10 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
       info("CLOSED", Planning.Info.Closed.apply)
 
     def planning: P[Planning] =
-      (deadlineInfo | scheduledInfo | closedInfo).rep(1).map(_.toList).map(Planning.apply)
+      (deadlineInfo | scheduledInfo | closedInfo)
+        .rep(1)
+        .map(_.toList)
+        .map(Planning.apply)
   }
 
   private[md4s] object table {
@@ -158,19 +186,23 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
     def table: P[Table] = P(tableOrg)
 
     def tableOrg: P[Table] =
-      (tableRow ~ eol ~ (tableRow ~ eol).rep()).map { case (firstRow, restRows) =>
-        Table(firstRow :: restRows.toList)
+      (tableRow ~ eol ~ (tableRow ~ eol).rep()).map {
+        case (firstRow, restRows) =>
+          Table(firstRow :: restRows.toList)
       }
 
     def tableRow: P[TableRow] = s0 ~ (tableRowSep | tableRowCells)
-    def tableRowSep: P[TableSep.type] = (P("|-") ~ anyFrom("\\-+|").rep()).map(_ => TableSep)
+    def tableRowSep: P[TableSep.type] =
+      (P("|-") ~ anyFrom("\\-+|").rep()).map(_ => TableSep)
 
     def tableRowCells: P[TableRowCells] =
       (P("|") ~ tableCell ~ (P("|") ~ tableCell).rep() ~ P("|").?.!!).map {
-        case (first: TableCell, rest: List[TableCell]) => TableRowCells((first :: rest.toList).filter(_.value.nonEmpty))
+        case (first: TableCell, rest: List[TableCell]) =>
+          TableRowCells((first :: rest.toList).filter(_.value.nonEmpty))
       }
 
-    def tableCell: P[TableCell] = charsUntilIn("\n|").map(s => TableCell(s.trim))
+    def tableCell: P[TableCell] =
+      charsUntilIn("\n|").map(s => TableCell(s.trim))
   }
 
   private[md4s] object target {
@@ -251,7 +283,9 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
       P("#").rep(min = fromLevel, max = 6).!.map(_.length)
 
     private[md4s] def priority: P[Priority] =
-      (P("[#") ~ fromRange("A-Z").! ~ P("]")).map(s => s.toList.head).map(Priority.apply)
+      (P("[#") ~ fromRange("A-Z").! ~ P("]"))
+        .map(s => s.toList.head)
+        .map(Priority.apply)
 
     // TODO: refactor
     def status: P[Headline.Status] =
@@ -262,7 +296,12 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
         .map(Headline.Status.apply)
 
     def tags: P[List[String]] =
-      (P(":") ~ choice(fromRange("a-z"), fromRange("A-Z"), fromRange("0-9"), anyFrom("%@#_"))
+      (P(":") ~ choice(
+        fromRange("a-z"),
+        fromRange("A-Z"),
+        fromRange("0-9"),
+        anyFrom("%@#_")
+      )
         .rep(1)
         .!
         .rep(min = 1, sep = Some(P(":"))) ~ P(":"))
@@ -305,7 +344,8 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
   private[md4s] object plainList {
     import models.elements.PlainList.*
 
-    def counter: P[Counter] = (d.rep(1) | fromRange("a-zA-Z")).!.map(Counter.apply)
+    def counter: P[Counter] =
+      (d.rep(1) | fromRange("a-zA-Z")).!.map(Counter.apply)
 
     def counterSet: P[Counter] = P("[@") ~ counter ~ P("]")
 
@@ -322,7 +362,9 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
       !(P(" :: ") | eolOrEnd) ~ anyChar.rep(1).! ~ P(" :: ")
 
     def orderedBullet: P[Bullet.Ordered] =
-      (counter ~ anyFrom(".)").!).map { case (i, c) => Bullet.Ordered(i, c(0)) } ~ (s | eolOrEnd)
+      (counter ~ anyFrom(".)").!).map { case (i, c) =>
+        Bullet.Ordered(i, c(0))
+      } ~ (s | eolOrEnd)
 
     def charBullet: P[Bullet.Character] =
       anyFrom("*+\\-").!.map(_(0)).map(Bullet.Character.apply) ~ (s | eolOrEnd)
@@ -361,7 +403,15 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
         )
       } yield t match {
         case (counterSet, checkbox, tag, content, elements) =>
-          Item(lvl, bullet, checkbox, counterSet, tag, content, elements.getOrElse(Nil))
+          Item(
+            lvl,
+            bullet,
+            checkbox,
+            counterSet,
+            tag,
+            content,
+            elements.getOrElse(Nil)
+          )
       }
 
     def plainList(minIndent: Int = 0, maxIndent: Int = 48): P[PlainList] =
@@ -385,7 +435,9 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
           ~ s0
           ~ nodePropertyValue.?.map(_.filter(_.nonEmpty))
           ~ eol
-      ).map { case (name: String, value: Option[String]) => NodeProperty(name, value) }
+      ).map { case (name: String, value: Option[String]) =>
+        NodeProperty(name, value)
+      }
 
     def propertyDrawer: P[PropertyDrawer] =
       (s0 ~ (s0 ~ nodeProperty).+ ~ eolOrEnd)
@@ -410,8 +462,10 @@ class LogseqMarkdownParser(ctx: LogseqMarkdownContext = LogseqMarkdownContext.de
     (P("""\\""") ~ anyFrom("\t ").rep() ~ eolOrEnd).map(_ => LineBreak)
 
   private[md4s] def duration: P[Duration] =
-    (P("=>") ~ s ~ d.rep(1).! ~ P(":") ~ d.rep(min = 2, max = 2).!).map { case (h, m) => (h.toInt, m.toInt) }.map {
-      case (h, m) => Duration(h, m)
+    (P("=>") ~ s ~ d.rep(1).! ~ P(":") ~ d.rep(min = 2, max = 2).!).map {
+      case (h, m) => (h.toInt, m.toInt)
+    }.map { case (h, m) =>
+      Duration(h, m)
     }
 
   private[md4s] def clock: P[Clock] =

@@ -8,7 +8,8 @@ case class LogseqMarkdownContext(
 
 object LogseqMarkdownContext {
 
-  /** Contains default values for all fields of the [[LogseqMarkdownContext]]. */
+  /** Contains default values for all fields of the [[LogseqMarkdownContext]].
+    */
   object default {
     val statusKeywords: StatusKeywords =
       StatusKeywords(Set("TODO", "DOING", "DONE"))

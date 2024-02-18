@@ -1,4 +1,4 @@
-package dev.vgerasimov.template
+package dev.vgerasimov.md4s
 
 import dev.vgerasimov.md4s.LogseqMarkdownParser.*
 import dev.vgerasimov.md4s.LogseqMarkdownParser

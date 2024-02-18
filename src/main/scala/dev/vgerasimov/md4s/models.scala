@@ -89,11 +89,16 @@ object models {
     case class EmptyLines(length: Int) extends Element
 
     case class HorizontalRuler(length: Int) extends Element {
-      require(length >= 3, "Horizontal ruler should be 3 or more characters long")
+      require(
+        length >= 3,
+        "Horizontal ruler should be 3 or more characters long"
+      )
     }
 
     case class Paragraph(objects: List[MdObject]) extends Element {
-      def ++ (that: Paragraph): Paragraph = Paragraph(this.objects ++ that.objects)
+      def ++ (that: Paragraph): Paragraph = Paragraph(
+        this.objects ++ that.objects
+      )
     }
 
     case class Comments(lines: List[Comments.Line]) extends Element
@@ -107,7 +112,8 @@ object models {
       case class TableRowCells(cells: List[TableCell]) extends TableRow
     }
 
-    case class NodeProperty(name: String, value: Option[String] = None) extends Element
+    case class NodeProperty(name: String, value: Option[String] = None)
+        extends Element
 
     case class PropertyDrawer(nodes: List[NodeProperty]) extends Element
 
@@ -201,8 +207,11 @@ object models {
         }
     }
 
-    case class TextMarkup(pre: String, marker: Marker, contents: List[TextMarkup.Content])
-        extends MdObject
+    case class TextMarkup(
+      pre: String,
+      marker: Marker,
+      contents: List[TextMarkup.Content]
+    ) extends MdObject
         with Headline.Title.Content
         with TextMarkup.Content
         with elements.PlainList.Content {
@@ -301,7 +310,10 @@ object models {
           with Timestamp.Range
 
       object InactiveTimestampRange {
-        def apply(from: InactiveTimestamp, toTime: Time): InactiveTimestampRange =
+        def apply(
+          from: InactiveTimestamp,
+          toTime: Time
+        ): InactiveTimestampRange =
           InactiveTimestampRange(from, from.copy(time = Some(toTime)))
       }
 
@@ -343,7 +355,10 @@ object models {
         day: Date.Day,
         dayName: Option[Date.DayName] = None
       ) {
-        require(Date.isValid(year, month, day), s"Invalid date: year=$year, month=$month, day=$day")
+        require(
+          Date.isValid(year, month, day),
+          s"Invalid date: year=$year, month=$month, day=$day"
+        )
 
         override def toString: String =
           dayName match {
@@ -354,8 +369,18 @@ object models {
 
       object Date {
 
-        def of(year: Int, month: Int, day: Int, dayName: Option[String] = None): Date =
-          Date(Year(year), Month(month), Day(day), dayName.flatMap(DayName.fromString))
+        def of(
+          year: Int,
+          month: Int,
+          day: Int,
+          dayName: Option[String] = None
+        ): Date =
+          Date(
+            Year(year),
+            Month(month),
+            Day(day),
+            dayName.flatMap(DayName.fromString)
+          )
 
         /** Checks that provided values represent a valid date. */
         def isValid(year: Year, month: Month, day: Day): Boolean =
@@ -397,7 +422,8 @@ object models {
           def isValid(month: Int): Boolean = 1 <= month && month <= 12
 
           /** Numbers of days in all 12 months for non-leap year. */
-          private val days: Array[Int] = Array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+          private val days: Array[Int] =
+            Array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
         }
 
         case class Day(value: Int) {
@@ -489,7 +515,8 @@ object models {
     sealed trait Clock
     object Clock {
       case class Simple(timestamp: Timestamp.Inactive) extends Clock
-      case class WithDuration(timestamp: Timestamp.Inactive, duration: Duration) extends Clock
+      case class WithDuration(timestamp: Timestamp.Inactive, duration: Duration)
+          extends Clock
     }
 
     case class TableCell(value: String)
