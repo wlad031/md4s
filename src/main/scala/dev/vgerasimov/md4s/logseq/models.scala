@@ -10,23 +10,20 @@ object models:
 
   /** A Markdown document can now be constructed by assembling these elements
     * into a hierarchy. For example, a document might contain a list of block
-    * elements where each element corresponds to items such as headers,
-    * paragraphs, code blocks, and so on.
+    * elements where each element corresponds to items such paragraphs, code
+    * blocks, and so on.
     */
   case class MarkdownAST(blocks: List[BlockElement]) extends MarkdownDocument
 
-  sealed trait BlockElement extends MarkdownDocument:
-    def headerLevel: Option[Int]
-    def status: Option[BlockElement.Status]
-    def priority: Option[BlockElement.Priority]
-    def propertyDrawer: Option[BlockElement.PropertyDrawer]
-  object BlockElement:
-    case class Status(value: String)
-    case class Priority(value: Char)
-    case class PropertyDrawer(nodes: List[PropertyDrawer.Node])
-        extends BlockElement
-    object PropertyDrawer:
-      case class Node(name: String, value: Option[String] = None)
+  sealed trait BlockElement extends MarkdownDocument
+
+  case class EmptyLines(length: Int) extends BlockElement
+
+  case class Status(value: String)
+  case class Priority(value: Char)
+  case class PropertyDrawer(nodes: List[PropertyDrawer.Node])
+  object PropertyDrawer:
+    case class Node(name: String, value: Option[String] = None) 
 
   sealed trait InlineElement
 
@@ -34,7 +31,22 @@ object models:
     elements: List[InlineElement]
   ) extends InlineElement
 
-  case class Paragraph(content: InlineContainer) extends BlockElement
+  case class HeadedSection(
+    heading: Heading,
+    content: List[BlockElement]
+  ) extends BlockElement
+
+  case class Heading(
+    content: Option[InlineContainer],
+    headerLevel: Int,
+    status: Option[Status] = None,
+    priority: Option[Priority] = None,
+    propertyDrawer: Option[PropertyDrawer] = None
+  ) extends BlockElement
+
+  case class Paragraph(
+    content: InlineContainer
+  ) extends BlockElement
 
   sealed trait MarkdownList extends BlockElement
   object MarkdownList:
@@ -44,12 +56,16 @@ object models:
 
   case class Blockquote(content: List[BlockElement]) extends BlockElement
 
-  case class CodeBlock(codeText: String, language: Option[String] = None)
-      extends BlockElement
+  case class CodeBlock(
+    codeText: String,
+    language: Option[String] = None
+  ) extends BlockElement
 
-  case object HorizontalRuler extends BlockElement
+  case class HorizontalRuler() extends BlockElement
 
-  case class Table(rows: List[Table.Row]) extends BlockElement
+  case class Table(
+    rows: List[Table.Row],
+  ) extends BlockElement
   object Table:
     sealed trait Row
     object Row:
@@ -57,7 +73,9 @@ object models:
       case class Cells(cells: List[Cell]) extends Row
     case class Cell(content: InlineContainer)
 
-  case class HTMLBlock(htmlContent: String) extends BlockElement
+  case class HTMLBlock(
+    htmlContent: String
+  ) extends BlockElement
 
   case class LinkReferenceDefinition(
     label: String,

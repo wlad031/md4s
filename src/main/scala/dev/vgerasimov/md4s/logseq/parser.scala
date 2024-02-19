@@ -7,7 +7,7 @@ import ops.{ *, given }
 import dev.vgerasimov.slowparse.*
 import dev.vgerasimov.slowparse.Parsers.{ *, given }
 
-object parser {
+object parser:
 
   /** Configuration of a Logseq Markdown document. */
   case class Context(
@@ -25,74 +25,78 @@ object parser {
       statusKeywords = default.statusKeywords
     )
 
-  private[md4s] object headline {
+class parser(ctx: parser.Context = parser.Context.defaultCtx):
 
-    private[md4s] def lvl(fromLevel: Int = 1, toLevel: Int = 6): P[Int] =
-      P("#").rep(min = fromLevel, max = toLevel).!.map(_.length)
+  def document: P[MarkdownAST] =
+    blockElements(minLevel = 1, maxLevel = 6)
+      .map(blocks => collapseHeadedSections(blocks))
+      .map(blocks => MarkdownAST(blocks))
 
-    private[md4s] def priority: P[Priority] =
+  private def inlineContainer: P[InlineContainer] =
+    ((timestamp | link | markup | (!eol ~ singleCharText)).+ ~ eolOrEnd)
+      .map(_.toList)
+      .map(foldTexts[InlineElement])
+      .map(InlineContainer.apply)
+
+  private def heading(minLevel: Int, maxLevel: Int): P[Heading] =
+    def headerLevel: P[Int] =
+      P("#").rep(min = minLevel, max = maxLevel).!.map(_.length)
+
+    def priority: P[Priority] =
       (P("[#") ~ fromRange("A-Z").! ~ P("]"))
         .map(s => s.toList.head)
         .map(Priority.apply)
 
-    // TODO: refactor
-    def status: P[Headline.Status] =
-      (!(P(" ") | eolOrEnd) ~ anyChar)
+    def status: P[Status] =
+      ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
+
+    ((headerLevel ~ s0) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.?).map {
+      case (
+            headerLevel: Int,
+            priority: Option[Priority],
+            status: Option[Status],
+            content: Option[InlineContainer]
+          ) =>
+        Heading(content, headerLevel, status, priority)
+    }
+
+  private def paragraph: P[Paragraph] = inlineContainer.map(Paragraph.apply)
+
+  private def emptyLines(max: Option[Int] = None): P[EmptyLines] =
+    max
+      .map(v => eol.rep(min = 1, max = v) ~ !eol)
+      .getOrElse(eol.rep(1))
+      .!
+      .map(s => EmptyLines(s.length))
+
+  private def blockElement(minLevel: Int, maxLevel: Int): P[BlockElement] = heading(minLevel, maxLevel) | paragraph | table | emptyLines()
+
+  private def blockElements(minLevel: Int, maxLevel: Int): P[List[BlockElement]] = blockElement(minLevel, maxLevel).rep(1)
+
+  private def link: P[Link] =
+
+    def linkProtocol: P[String] =
+      (!P(":") ~ fromRange("a-zA-Z0-9"))
         .rep(1)
         .!
-        .filter(v => ctx.statusKeywords.contains(v))
-        .map(Headline.Status.apply)
+    // .filter(ctx.linkTypes.contains)
 
-    def title: P[Title] =
-      (
-        timestamp.timestamp
-          | markup.textMarkup
-          | (!(eol | tags) ~ anyChar.!.map(Text.apply))
-      ).rep(1)
-        .map(_.toList)
-        .map(foldTexts[Title.Content])
-        .map(Title.apply)
+    // def contentsWithoutLinks: P[Contents] =
+    //   (!P("]") ~ anyChar.!.map(Text.apply))
+    //     .rep()
+    //     .map(_.toList)
+    //     .map(foldTexts[MdObject])
+    //     .map(ls => Contents(ls))
 
-    def headline(fromLevel: Int = 1): P[Headline] =
-      (
-        stars(fromLevel)
-          ~ (s.!! ~ status).?
-          ~ (s.!! ~ priority).?
-          ~ (s.!! ~ title).?
-          ~ s0
-          ~ eolOrEnd
-      ).map {
-        case (
-              stars: Int,
-              status: Option[Headline.Status],
-              priority: Option[Priority],
-              title: Option[Title]
-            ) =>
-          Headline(
-            stars,
-            status,
-            priority,
-            title
-          )
-      }
-  }
+    def path4: P[String] = charsUntilIn("]")
 
-  private[md4s] object paragraph {
-    private def anyParagraphObject: P[MdObject] =
-      timestamp.timestamp | link.link | markup.textMarkup | lineBreak | (!eol ~ singleCharText)
+    (P("[[") ~ path4 ~ P("]]")).map { case c =>
+      Link(InlineContainer(List(Text(c))), null, None)
+    }
 
-    def paragraph: P[Paragraph] =
-      (
-        (!headline.headline() ~ anyParagraphObject).rep(1)
-          ~ (end.map(_ => Text("")) | eol.!.map(Text.apply))
-      ).map { case (ls, last) => ls.toList ++ List(last) }
-        .map(foldTexts[MdObject])
-        .map(Paragraph.apply)
-  }
-
-  private[md4s] def table: P[Table] = {
-    import models.Table.*
-    import models.Table.Row.*
+  private def table: P[Table] = {
+    import Table.*
+    import Table.Row.*
 
     def separator: P[Separator.type] =
       (P("|-") ~ anyFrom("\\-+|").rep()).map(_ => Separator)
@@ -112,7 +116,7 @@ object parser {
     }
   }
 
-  private[md4s] def timestamp: P[Timestamp] = {
+  private def timestamp: P[Timestamp] = {
     import models.Timestamp.*
     import models.Timestamp.Date.*
     import models.Timestamp.Date.DayName.*
@@ -293,9 +297,9 @@ object parser {
     )
   }
 
-  private[md4s] def markup: P[TextMarkup] = {
-    import models.TextMarkup.*
-    import models.TextMarkup.Marker.*
+  private def markup: P[TextMarkup] = {
+    import TextMarkup.*
+    import TextMarkup.Marker.*
 
     def pre: P[String] = (anyFrom("\n\r \t\\-({\'\"")).!
     def post: P[Unit] = end | anyFrom("\n\r \t\\-)}\'\".,:;!?[")
@@ -337,5 +341,10 @@ object parser {
       }
   }
 
+  private def lineBreak: P[LineBreak.Hardbreak.type] =
+    (
+      // P("""\\""") ~
+      anyFrom("\t ").rep() ~ eolOrEnd
+    ).map(_ => LineBreak.Hardbreak)
+
   private def singleCharText: P[Text] = anyChar.!.map(Text.apply)
-}

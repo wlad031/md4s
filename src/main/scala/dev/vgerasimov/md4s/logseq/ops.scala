@@ -27,7 +27,8 @@ object ops:
       def | (that: Cell): Cells = Cells(List(cell, that))
       def asRow: Cells = Cells(List(cell))
 
-    def $ : String => Cell = content => Cell(InlineContainer(List(Text(content))))
+    def $ : String => Cell = content =>
+      Cell(InlineContainer(List(Text(content))))
     def sep: Separator.type = Separator
 
   private def fold[A >: B, B : ClassTag](
@@ -64,10 +65,38 @@ object ops:
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
 
-  // private[md4s] def foldParagraphs[A >: Paragraph](objects: List[A]): List[A] =
-  //   for {
-  //     element <- fold[A, Paragraph](objects, _ ++ _)
-  //   } yield element match {
-  //     case Paragraph(objects) => Paragraph(foldTexts(objects))
-  //     case _                  => element
-  //   }
+  private[md4s] def collapseHeadedSections(
+    elements: List[BlockElement]
+  ): List[BlockElement] =
+    elements
+      .foldLeft[List[BlockElement]](Nil)((accumulator, element) =>
+        (element, accumulator) match
+          case (h: Heading, Nil) => List(HeadedSection(h, Nil))
+          case (x, Nil)          => List(x)
+          case (
+                curH @ Heading(_, lvl, _, _, _),
+                (prevSec @ HeadedSection(
+                  prevH @ Heading(_, prevLvl, _, _, _),
+                  prevContent
+                )) :: t
+              ) =>
+            if (lvl > prevLvl) HeadedSection(prevH, curH :: prevContent) :: t
+            else HeadedSection(curH, Nil) :: prevSec :: t
+          case (x, HeadedSection(prevH, prevContent) :: t) =>
+            HeadedSection(prevH, x :: prevContent) :: t
+          case (x, ls) => x :: ls
+      )
+      .map {
+        case HeadedSection(heading, content) =>
+          HeadedSection(heading, content.reverse)
+        case x => x
+      }
+      .reverse
+
+// private[md4s] def foldParagraphs[A >: Paragraph](objects: List[A]): List[A] =
+//   for {
+//     element <- fold[A, Paragraph](objects, _ ++ _)
+//   } yield element match {
+//     case Paragraph(objects) => Paragraph(foldTexts(objects))
+//     case _                  => element
+//   }
