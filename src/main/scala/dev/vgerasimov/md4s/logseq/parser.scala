@@ -25,10 +25,16 @@ object parser:
       statusKeywords = default.statusKeywords
     )
 
-class parser(ctx: parser.Context = parser.Context.defaultCtx):
+  private enum ListType:
+    case Unordered, Ordered
+
+import parser.*
+
+class parser(ctx: Context = Context.defaultCtx):
 
   def document: P[MarkdownAST] =
-    blockElements(minLevel = 1, maxLevel = 6)
+    blockElement()
+      .rep(1)
       .map(blocks => collapseHeadedSections(blocks))
       .map(blocks => MarkdownAST(blocks))
 
@@ -60,18 +66,56 @@ class parser(ctx: parser.Context = parser.Context.defaultCtx):
         Heading(content, headerLevel, status, priority)
     }
 
-  private def paragraph: P[Paragraph] = inlineContainer.map(Paragraph.apply)
+  private def list(
+    listMinLevel: Int,
+    listMaxLevel: Int
+  ): P[MarkdownList] =
+    def orderedListMarker: P[Int] = d.+.!.map(_.toInt) ~ P(".")
+    def listMarker: P[String | Int] = anyFrom("-+").! | orderedListMarker
+    def indentation: P[Int] =
+      P(P(" ").rep(min = listMinLevel, max = listMaxLevel) ~ !P(" ")).!.map(
+        _.length
+      )
+
+    &(indentation.!! ~ listMarker).flatMap {
+      case marker: String =>
+        ((indentation.!!
+        ~ P(marker)
+        ~ s0
+        ~ blockElement(listMinLevel = listMinLevel + 1).rep())
+          .map(items => MarkdownList.Item(items))).rep(1)
+          .map(items => MarkdownList.Unordered(items))
+      case marker: Int =>
+        (indentation.!!
+        ~ orderedListMarker.!!
+        ~ s0
+        ~ (blockElement(listMinLevel = listMinLevel + 1).rep())
+          .map(items => MarkdownList.Item(items))).rep(1)
+          .map(items => MarkdownList.Ordered(items))
+    }
+
+  private def paragraph: P[Paragraph] =
+    !list(listMinLevel = 0, listMaxLevel = Int.MaxValue)
+    ~ inlineContainer.map(Paragraph.apply)
 
   private def emptyLines(max: Option[Int] = None): P[EmptyLines] =
     max
-      .map(v => eol.rep(min = 1, max = v) ~ !eol)
+      .map(v => eol.rep(min = 2, max = v) ~ !eol)
       .getOrElse(eol.rep(1))
       .!
       .map(s => EmptyLines(s.length))
 
-  private def blockElement(minLevel: Int, maxLevel: Int): P[BlockElement] = heading(minLevel, maxLevel) | paragraph | table | emptyLines()
-
-  private def blockElements(minLevel: Int, maxLevel: Int): P[List[BlockElement]] = blockElement(minLevel, maxLevel).rep(1)
+  private def blockElement(
+    headingMinLevel: Int = 1,
+    headingMaxLevel: Int = 6,
+    listMinLevel: Int = 0,
+    listMaxLevel: Int = 6
+  ): P[BlockElement] =
+    list(listMinLevel, listMaxLevel)
+    | heading(headingMinLevel, headingMaxLevel)
+    | paragraph
+    | table
+    | emptyLines()
 
   private def link: P[Link] =
 
