@@ -11,22 +11,37 @@ object parser:
 
   /** Configuration of a Logseq Markdown document. */
   case class Context(
-    statusKeywords: Set[String]
+    statusKeywords: Set[String],
+    listMaxLevel: Int
   )
 
   object Context:
 
     /** Contains default values for all fields of the [[Context]]. */
     object default:
-      def statusKeywords: Set[String] = Set("TODO", "DOING", "DONE")
+      val statusKeywords: Set[String] = Set("TODO", "DOING", "DONE")
+      val listMaxLevel: Int = 20
 
     /** Default instance of [[Context]]. */
     def defaultCtx: Context = Context(
-      statusKeywords = default.statusKeywords
+      statusKeywords = default.statusKeywords,
+      listMaxLevel = default.listMaxLevel
     )
 
   private enum ListType:
     case Unordered, Ordered
+
+  private val charsToMarkers: Map[String, TextMarkup.Marker] = Map(
+    "*" -> TextMarkup.Marker.Bold,
+    "=" -> TextMarkup.Marker.Verbatim,
+    "/" -> TextMarkup.Marker.Italic,
+    "+" -> TextMarkup.Marker.StrikeThrough,
+    "_" -> TextMarkup.Marker.Underline,
+    "`" -> TextMarkup.Marker.Code
+  )
+
+  private val markersToChars: Map[TextMarkup.Marker, String] =
+    charsToMarkers.map(_.swap)
 
 import parser.*
 
@@ -39,7 +54,7 @@ class parser(ctx: Context = Context.defaultCtx):
       .map(blocks => MarkdownAST(blocks))
 
   private def inlineContainer: P[InlineContainer] =
-    ((timestamp | link | markup | (!eol ~ singleCharText)).+ ~ eolOrEnd)
+    (choice(timestamp, link, markup, (!eol ~ singleCharText)).+ ~ eolOrEnd)
       .map(_.toList)
       .map(foldTexts[InlineElement])
       .map(InlineContainer.apply)
@@ -56,47 +71,78 @@ class parser(ctx: Context = Context.defaultCtx):
     def status: P[Status] =
       ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
 
-    ((headerLevel ~ s0) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.?).map {
+    (!listMarker ~ (headerLevel ~ s0) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
       case (
             headerLevel: Int,
             priority: Option[Priority],
             status: Option[Status],
-            content: Option[InlineContainer]
+            content: Option[InlineContainer],
+            drawer: Option[PropertyDrawer]
           ) =>
-        Heading(content, headerLevel, status, priority)
+        Heading(content, headerLevel, status, priority, drawer)
     }
+
+  private def propertyDrawer: P[PropertyDrawer] = {
+
+    def nodePropertyName: P[String] = until(P("::") | eol).!
+    def nodePropertyValue: P[InlineContainer] = inlineContainer
+
+    def nodeProperty: P[PropertyDrawer.Node] =
+      (
+        nodePropertyName
+          ~ P("::")
+          ~ s0
+          ~ nodePropertyValue.?
+      ).map { case (name: String, value: Option[InlineContainer]) =>
+        PropertyDrawer.Node(name, value)
+      }
+
+    (s0 ~ (s0 ~ nodeProperty).+)
+      .map(_.toList)
+      .map(PropertyDrawer.apply)
+  }
+
+  private def orderedListMarker: P[Int] = d.+.!.map(_.toInt) ~ P(".")
+  private def listMarker: P[String | Int] = anyFrom("-+").! | orderedListMarker
 
   private def list(
     listMinLevel: Int,
     listMaxLevel: Int
   ): P[MarkdownList] =
-    def orderedListMarker: P[Int] = d.+.!.map(_.toInt) ~ P(".")
-    def listMarker: P[String | Int] = anyFrom("-+").! | orderedListMarker
-    def indentation: P[Int] =
-      P(P(" ").rep(min = listMinLevel, max = listMaxLevel) ~ !P(" ")).!.map(
-        _.length
-      )
+    if (listMinLevel > ctx.listMaxLevel || listMinLevel > listMaxLevel)
+      fail[MarkdownList]
+    else
+      def indentation: P[Int] =
+        P(P("\t").rep(min = listMinLevel, max = listMaxLevel) ~ !P("\t")).!.map(
+          _.length
+        )
 
-    &(indentation.!! ~ listMarker).flatMap {
-      case marker: String =>
-        ((indentation.!!
-        ~ P(marker)
-        ~ s0
-        ~ blockElement(listMinLevel = listMinLevel + 1).rep())
-          .map(items => MarkdownList.Item(items))).rep(1)
-          .map(items => MarkdownList.Unordered(items))
-      case marker: Int =>
-        (indentation.!!
-        ~ orderedListMarker.!!
-        ~ s0
-        ~ (blockElement(listMinLevel = listMinLevel + 1).rep())
-          .map(items => MarkdownList.Item(items))).rep(1)
-          .map(items => MarkdownList.Ordered(items))
-    }
+      &(indentation.!! ~ listMarker).flatMap {
+        case marker: String =>
+          (indentation.!!
+          ~ P(marker)
+          ~ s0
+          ~ blockElement(listMinLevel = listMinLevel + 1).rep())
+            .map(items => MarkdownList.Item(items))
+            .rep(1)
+            .map(items => MarkdownList.Unordered(items))
+        case marker: Int =>
+          (indentation.!!
+          ~ orderedListMarker.!!
+          ~ s0
+          ~ (blockElement(listMinLevel = listMinLevel + 1)
+            .rep())
+            .map(items => MarkdownList.Item(items)))
+            .rep(1)
+            .map(items => MarkdownList.Ordered(items))
+      }
 
   private def paragraph: P[Paragraph] =
-    !list(listMinLevel = 0, listMaxLevel = Int.MaxValue)
-    ~ inlineContainer.map(Paragraph.apply)
+    !(s0 ~ listMarker)
+    ~ (inlineContainer ~ propertyDrawer.?).map {
+      case (content: InlineContainer, drawer: Option[PropertyDrawer]) =>
+        Paragraph(content, drawer)
+    }
 
   private def emptyLines(max: Option[Int] = None): P[EmptyLines] =
     max
@@ -109,13 +155,15 @@ class parser(ctx: Context = Context.defaultCtx):
     headingMinLevel: Int = 1,
     headingMaxLevel: Int = 6,
     listMinLevel: Int = 0,
-    listMaxLevel: Int = 6
+    listMaxLevel: Int = ctx.listMaxLevel
   ): P[BlockElement] =
-    list(listMinLevel, listMaxLevel)
-    | heading(headingMinLevel, headingMaxLevel)
-    | paragraph
-    | table
-    | emptyLines()
+    choice(
+      list(listMinLevel, listMaxLevel),
+      heading(headingMinLevel, headingMaxLevel),
+      paragraph,
+      table,
+      emptyLines()
+    )
 
   private def link: P[Link] =
 
@@ -341,6 +389,7 @@ class parser(ctx: Context = Context.defaultCtx):
     )
   }
 
+  // FIXME: Markup is problematic and slow
   private def markup: P[TextMarkup] = {
     import TextMarkup.*
     import TextMarkup.Marker.*
@@ -349,28 +398,18 @@ class parser(ctx: Context = Context.defaultCtx):
     def post: P[Unit] = end | anyFrom("\n\r \t\\-)}\'\".,:;!?[")
 
     def marker: P[Marker] =
-      anyFrom("*=/+_~").!.map(s => {
-        s match {
-          case "*" => Some(Bold)
-          case "=" => Some(Verbatim)
-          case "/" => Some(Italic)
-          case "+" => Some(StrikeThrough)
-          case "_" => Some(Underline)
-          case "~" => Some(Code)
-          case _   => None
-        }
-      })
+      choice(charsToMarkers.keySet.map(P(_))).!.map(charsToMarkers.get)
         .filter(_.isDefined)
         .map(_.get)
 
     (pre.? ~ marker ~ !P(" "))
       .flatMap[TextMarkup] { case (pre, marker) =>
         P(
-          !P(marker.toString)
+          !P(markersToChars(marker))
           ~ (if (marker.isNestable)
                (timestamp
                | markup
-               | (!P(marker.toString) ~ singleCharText))
+               | (!P(markersToChars(marker)) ~ singleCharText))
                  .rep(1)
                  .map(_.toList)
                  .map(foldTexts[TextMarkup.Content])

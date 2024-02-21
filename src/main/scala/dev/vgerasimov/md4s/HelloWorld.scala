@@ -7,14 +7,18 @@ object Hello:
   def apply(s: String): String = s"Hello $s!"
 
 @main def run =
+  val pprint2 = 
+    pprint.copy(
+      additionalHandlers = { 
+        case logseq.models.Text(s) :: Nil => pprint.Tree.Literal(s)
+        case logseq.models.Text(s) =>  pprint.Tree.Literal(s)
+      }
+    ) 
   val parser = logseq.parser().document
-  var toParse = """- a
-  |  asdasdasd
-  | 1. a1
-  |  + bbb
-  | 2. a2
-  |- b
-  |+ c
+  var toParse = """## hello
+  |type:: foo
+  |type2:: bar
+  |adasddfsf
   |""".stripMargin
   toParse = """- #### Pi.Alert
   type:: [[Software]]
@@ -35,5 +39,13 @@ object Hello:
   collapsed:: true
 	- https://stackoverflow.com/questions/35773299/how-can-you-export-the-visual-studio-code-extension-list
 """
+  // read An Introduction to Tracking Transactions with Ledger CLI.md as string
+  toParse = scala.io.Source.fromFile("/Users/vgerasimov/Logseq/pages/An Introduction to Tracking Transactions with Ledger CLI.md").mkString
+  // toParse = """- foo1
+	// - foo2
+	// 	- foo3
+	// 		- foo4
+	// 			- foo5
+  // """.stripMargin
   var parsed = parser(toParse)
-  pprint.pprintln(parsed)
+  pprint2.pprintln(parsed)

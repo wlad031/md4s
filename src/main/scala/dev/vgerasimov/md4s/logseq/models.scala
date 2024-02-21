@@ -23,7 +23,7 @@ object models:
   case class Priority(value: Char)
   case class PropertyDrawer(nodes: List[PropertyDrawer.Node])
   object PropertyDrawer:
-    case class Node(name: String, value: Option[String] = None) 
+    case class Node(name: String, value: Option[InlineContainer] = None) 
 
   sealed trait InlineElement
 
@@ -45,7 +45,8 @@ object models:
   ) extends BlockElement
 
   case class Paragraph(
-    content: InlineContainer
+    content: InlineContainer,
+    propertyDrawer: Option[PropertyDrawer] = None
   ) extends BlockElement
 
   sealed trait MarkdownList extends BlockElement
