@@ -2,7 +2,6 @@ package dev.vgerasimov.md4s
 package logseq
 
 import models.*
-import models.{ Text, TextMarkup }
 
 import scala.reflect.{ ClassTag, classTag }
 
@@ -56,11 +55,11 @@ object ops:
   extension (text: Text)
     def ++ (that: Text): Text = Text(text.content ++ that.content)
 
-  extension (marker: TextMarkup.Marker)
-    def isNestable: Boolean = marker match
-      case TextMarkup.Marker.Code     => false
-      case TextMarkup.Marker.Verbatim => false
-      case _                          => true
+  // extension (marker: TextMarkup.Marker)
+  //   def isNestable: Boolean = marker match
+  //     case TextMarkup.Marker.Code     => false
+  //     case TextMarkup.Marker.Verbatim => false
+  //     case _                          => true
 
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)

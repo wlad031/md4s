@@ -1,8 +1,6 @@
 package dev.vgerasimov.md4s
 package logseq
 
-import scala.sys.Prop
-
 object models:
 
   /** Represents the root of a Markdown document AST. */
@@ -23,7 +21,7 @@ object models:
   case class Priority(value: Char)
   case class PropertyDrawer(nodes: List[PropertyDrawer.Node])
   object PropertyDrawer:
-    case class Node(name: String, value: Option[InlineContainer] = None) 
+    case class Node(name: String, value: Option[InlineContainer] = None)
 
   sealed trait InlineElement
 
@@ -65,7 +63,7 @@ object models:
   case class HorizontalRuler() extends BlockElement
 
   case class Table(
-    rows: List[Table.Row],
+    rows: List[Table.Row]
   ) extends BlockElement
   object Table:
     sealed trait Row
@@ -84,23 +82,43 @@ object models:
     title: Option[String]
   ) extends BlockElement
 
-  case class Text(content: String) extends InlineElement with TextMarkup.Content
+  case class Text(content: String) extends InlineElement
 
-  case class TextMarkup(
-    pre: String,
-    marker: TextMarkup.Marker,
-    contents: List[TextMarkup.Content]
+  case class Emphasis(
+    marker: Emphasis.Marker,
+    contents: InlineContainer
   ) extends InlineElement
-      with TextMarkup.Content
 
-  object TextMarkup:
-    enum Marker:
-      case Bold, Verbatim, Italic, StrikeThrough, Underline, Code
+  object Emphasis:
+    sealed trait Marker(value: String)
+    object Marker:
+      case class Bold(value: String) extends Marker(value)
+      case class Italic(value: String) extends Marker(value)
+      case class StrikeThrough(value: String) extends Marker(value)
+      case class Code(value: String) extends Marker(value)
+      case class Highlight(value: String) extends Marker(value)
 
-    sealed trait Content
+  sealed trait Link extends InlineElement
+  object Link:
+    sealed trait Internal extends Link
+    case class ClassicInternalLink(
+      location: Link.Location.Internal,
+      text: Option[Text]
+    ) extends Internal
+    case class TagInternalLink(location: Location.Internal.Page)
+        extends Internal
+    case class ExternalLink(
+      location: Location.External,
+      text: Option[Text]
+    ) extends Link
 
-  case class Link(text: InlineContainer, url: String, title: Option[String])
-      extends InlineElement
+    sealed trait Location
+    object Location:
+      case class External(value: String) extends Location
+      sealed trait Internal extends Location
+      object Internal:
+        case class Page(value: String) extends Internal
+        case class Block(value: String) extends Internal
 
   case class Image(altText: String, url: String, title: Option[String])
       extends InlineElement
@@ -129,7 +147,7 @@ object models:
 
   case class FootnoteReference(identifier: String) extends InlineElement
 
-  sealed trait Timestamp extends InlineElement with TextMarkup.Content
+  sealed trait Timestamp extends InlineElement
   object Timestamp:
     sealed trait Active extends Timestamp
     sealed trait Inactive extends Timestamp

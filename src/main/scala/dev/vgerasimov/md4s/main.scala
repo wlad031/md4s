@@ -1,19 +1,13 @@
 package dev.vgerasimov.md4s
 
-import dev.vgerasimov.md4s.LogseqMarkdownParser.*
-import dev.vgerasimov.md4s.LogseqMarkdownParser
-
-object Hello:
-  def apply(s: String): String = s"Hello $s!"
-
 @main def run =
-  val pprint2 = 
+  val pprint2 =
     pprint.copy(
-      additionalHandlers = { 
+      additionalHandlers = {
         case logseq.models.Text(s) :: Nil => pprint.Tree.Literal(s)
-        case logseq.models.Text(s) =>  pprint.Tree.Literal(s)
+        case logseq.models.Text(s)        => pprint.Tree.Literal(s)
       }
-    ) 
+    )
   val parser = logseq.parser().document
   var toParse = """## hello
   |type:: foo
@@ -40,12 +34,11 @@ object Hello:
 	- https://stackoverflow.com/questions/35773299/how-can-you-export-the-visual-studio-code-extension-list
 """
   // read An Introduction to Tracking Transactions with Ledger CLI.md as string
-  toParse = scala.io.Source.fromFile("/Users/vgerasimov/Logseq/pages/An Introduction to Tracking Transactions with Ledger CLI.md").mkString
-  // toParse = """- foo1
-	// - foo2
-	// 	- foo3
-	// 		- foo4
-	// 			- foo5
-  // """.stripMargin
+  toParse = scala.io.Source
+    .fromFile(
+      "/Users/vgerasimov/Logseq/pages/An Introduction to Tracking Transactions with Ledger CLI.md"
+    )
+    .mkString
+  // toParse = """hello `code` world""".stripMargin
   var parsed = parser(toParse)
   pprint2.pprintln(parsed)

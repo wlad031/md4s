@@ -1,10 +1,10 @@
-package dev.vgerasimov.md4s
+package dev.vgerasimov.md4s.logseq
 
 import dev.vgerasimov.slowparse.{ P, POut }
-import dev.vgerasimov.md4s.models.*
-import dev.vgerasimov.md4s.models.elements.*
-import dev.vgerasimov.md4s.models.objects.*
-import dev.vgerasimov.md4s.models.objects.TextMarkup.*
+
+import models.*
+import ops.{ *, given }
+import parser.*
 
 class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
 
@@ -13,21 +13,25 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
     checkParser(
       parser.document,
       toParse,
-      Document(elements = List(Paragraph(objects = List(bold("", "hello world")))), sections = List())
+      MarkdownAST(
+        List(
+          Paragraph(
+            InlineContainer(
+              List(
+                Emphasis(
+                  Emphasis.Marker.Italic("*"),
+                  InlineContainer(List(Text("hello world")))
+                )
+              )
+            )
+          )
+        )
+      )
     )
   }
 
-  test("Full parser should parse some valid heading") {
-    val toParse = """# hello world"""
-    checkParser(
-      parser.document,
-      toParse,
-      Document(elements = List(Paragraph(objects = List(bold("", "hello world")))), sections = List())
-    )
-  }
-
-  lazy val ctx: LogseqMarkdownContext = LogseqMarkdownContext.defaultCtx
-  lazy val parser: LogseqMarkdownParser = new LogseqMarkdownParser(ctx)
+  lazy val ctx = Context.defaultCtx
+  lazy val parser = new parser(ctx)
 
   extension [T](r: POut[T])
     def isSuccess: Boolean = r match

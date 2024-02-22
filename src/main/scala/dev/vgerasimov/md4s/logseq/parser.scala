@@ -12,36 +12,34 @@ object parser:
   /** Configuration of a Logseq Markdown document. */
   case class Context(
     statusKeywords: Set[String],
-    listMaxLevel: Int
+    listMaxLevel: Int,
+    commaSeparatedNodeProperties: Set[String],
+    aliasNodeProperty: String
   )
 
   object Context:
 
     /** Contains default values for all fields of the [[Context]]. */
     object default:
-      val statusKeywords: Set[String] = Set("TODO", "DOING", "DONE")
-      val listMaxLevel: Int = 20
+      val statusKeywords: Set[String] =
+        Set("TODO", "DOING", "DONE", "LATER")
+      val listMaxLevel: Int =
+        20
+      val commaSeparatedNodeProperties: Set[String] =
+        Set("tags", "file", "alias", "id", "created", "modified")
+      val aliasNodeProperty: String =
+        "alias"
 
     /** Default instance of [[Context]]. */
-    def defaultCtx: Context = Context(
+    val defaultCtx: Context = Context(
       statusKeywords = default.statusKeywords,
-      listMaxLevel = default.listMaxLevel
+      listMaxLevel = default.listMaxLevel,
+      commaSeparatedNodeProperties = default.commaSeparatedNodeProperties,
+      aliasNodeProperty = default.aliasNodeProperty
     )
 
   private enum ListType:
     case Unordered, Ordered
-
-  private val charsToMarkers: Map[String, TextMarkup.Marker] = Map(
-    "*" -> TextMarkup.Marker.Bold,
-    "=" -> TextMarkup.Marker.Verbatim,
-    "/" -> TextMarkup.Marker.Italic,
-    "+" -> TextMarkup.Marker.StrikeThrough,
-    "_" -> TextMarkup.Marker.Underline,
-    "`" -> TextMarkup.Marker.Code
-  )
-
-  private val markersToChars: Map[TextMarkup.Marker, String] =
-    charsToMarkers.map(_.swap)
 
 import parser.*
 
@@ -53,8 +51,13 @@ class parser(ctx: Context = Context.defaultCtx):
       .map(blocks => collapseHeadedSections(blocks))
       .map(blocks => MarkdownAST(blocks))
 
+  private def inlineContainerWithoutEmphasis: P[InlineContainer] =
+    (choice(timestamp, link, (!eol ~ singleCharText)).+).map(_.toList)
+      .map(foldTexts[InlineElement])
+      .map(InlineContainer.apply)
+
   private def inlineContainer: P[InlineContainer] =
-    (choice(timestamp, link, markup, (!eol ~ singleCharText)).+ ~ eolOrEnd)
+    (choice(timestamp, link, emphasis, (!eol ~ singleCharText)).+ ~ eolOrEnd)
       .map(_.toList)
       .map(foldTexts[InlineElement])
       .map(InlineContainer.apply)
@@ -71,7 +74,7 @@ class parser(ctx: Context = Context.defaultCtx):
     def status: P[Status] =
       ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
 
-    (!listMarker ~ (headerLevel ~ s0) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
+    (!listMarker ~ (headerLevel ~ s1) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
       case (
             headerLevel: Int,
             priority: Option[Priority],
@@ -151,6 +154,14 @@ class parser(ctx: Context = Context.defaultCtx):
       .!
       .map(s => EmptyLines(s.length))
 
+  private def codeBlock: P[CodeBlock] =
+    def surrounder = P("```")
+    s0 ~ surrounded(
+      surroundingParser = surrounder,
+      contentParser =
+        (!(eol | surrounder) ~ anyChar.!).+.mkString.? ~ eol ~ (!surrounder ~ anyChar.!).+.mkString
+    ).map { case (lang, content) => CodeBlock(content, lang) }
+
   private def blockElement(
     headingMinLevel: Int = 1,
     headingMaxLevel: Int = 6,
@@ -160,31 +171,63 @@ class parser(ctx: Context = Context.defaultCtx):
     choice(
       list(listMinLevel, listMaxLevel),
       heading(headingMinLevel, headingMaxLevel),
+      codeBlock,
       paragraph,
       table,
       emptyLines()
     )
 
   private def link: P[Link] =
+    import Link.*
 
-    def linkProtocol: P[String] =
-      (!P(":") ~ fromRange("a-zA-Z0-9"))
-        .rep(1)
-        .!
-    // .filter(ctx.linkTypes.contains)
+    def tag: P[TagInternalLink] =
+      (
+        P("#") ~ !s1 ~ alphaNum.+.!
+          | P("#[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map {
+            case (first, next) => first + next
+          } ~ P("]]")
+      )
+        .map(Location.Internal.Page.apply)
+        .map(TagInternalLink.apply)
 
-    // def contentsWithoutLinks: P[Contents] =
-    //   (!P("]") ~ anyChar.!.map(Text.apply))
-    //     .rep()
-    //     .map(_.toList)
-    //     .map(foldTexts[MdObject])
-    //     .map(ls => Contents(ls))
+    def page: P[Location.Internal.Page] =
+      (
+        P("[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map {
+          case (first, next) => first + next
+        } ~ P("]]")
+      ).map(Location.Internal.Page.apply)
 
-    def path4: P[String] = charsUntilIn("]")
+    def block: P[Location.Internal.Block] =
+      (
+        P("((") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map {
+          case (first, next) => first + next
+        } ~ P("))")
+      ).map(Location.Internal.Block.apply)
 
-    (P("[[") ~ path4 ~ P("]]")).map { case c =>
-      Link(InlineContainer(List(Text(c))), null, None)
-    }
+    def internalLocation: P[Location.Internal] = page | block
+
+    def text: P[Text] =
+      (P("[") ~ !P("[") ~ (!(P(
+        "]"
+      ) | eolOrEnd) ~ singleCharText.!).+.mkString ~ P("]") ~ !P("]"))
+        .map(Text.apply)
+
+    def internalLink: P[Internal] =
+      tag | (text.? ~ internalLocation).map { case (text, location) =>
+        ClassicInternalLink(location, text)
+      }
+
+    def externalLink: P[ExternalLink] =
+      (
+        text
+          ~ (
+            P("(")
+            ~ (!(P(")") | eolOrEnd) ~ singleCharText.!).+.mkString
+            ~ P(")")
+          ).map(Location.External.apply)
+      ).map { case (text, location) => ExternalLink(location, Some(text)) }
+
+    internalLink | externalLink
 
   private def table: P[Table] = {
     import Table.*
@@ -389,40 +432,36 @@ class parser(ctx: Context = Context.defaultCtx):
     )
   }
 
-  // FIXME: Markup is problematic and slow
-  private def markup: P[TextMarkup] = {
-    import TextMarkup.*
-    import TextMarkup.Marker.*
+  private def emphasis: P[Emphasis] =
+    def nonNestable(
+      markerParser: P[?],
+      markerFirstCharParser: P[?],
+      marker: Emphasis.Marker
+    ): P[Emphasis] =
+      surrounded(
+        surroundingParser = markerParser,
+        contentParser = !(s1 | markerFirstCharParser)
+          ~ (!(markerParser | eol) ~ singleCharText).+.map(
+            foldTexts[InlineElement]
+          )
+      )
+        .map(InlineContainer.apply)
+        .map(v => Emphasis(marker, v))
+    def bold: P[Emphasis] =
+      nonNestable(P("**"), P("*"), Emphasis.Marker.Bold("**"))
+      | nonNestable(P("__"), P("_"), Emphasis.Marker.Bold("__"))
+    def code: P[Emphasis] =
+      nonNestable(P("`"), P("`"), Emphasis.Marker.Code("`"))
+    def italic: P[Emphasis] =
+      nonNestable(P("*"), P("*"), Emphasis.Marker.Italic("*"))
+      | nonNestable(P("_"), P("_"), Emphasis.Marker.Italic("_"))
+    def highlight: P[Emphasis] =
+      nonNestable(P("^^"), P("^"), Emphasis.Marker.Italic("^^"))
+      | nonNestable(P("=="), P("="), Emphasis.Marker.Italic("=="))
+    def strikeThrough: P[Emphasis] =
+      nonNestable(P("~~"), P("~"), Emphasis.Marker.Code("~~"))
 
-    def pre: P[String] = (anyFrom("\n\r \t\\-({\'\"")).!
-    def post: P[Unit] = end | anyFrom("\n\r \t\\-)}\'\".,:;!?[")
-
-    def marker: P[Marker] =
-      choice(charsToMarkers.keySet.map(P(_))).!.map(charsToMarkers.get)
-        .filter(_.isDefined)
-        .map(_.get)
-
-    (pre.? ~ marker ~ !P(" "))
-      .flatMap[TextMarkup] { case (pre, marker) =>
-        P(
-          !P(markersToChars(marker))
-          ~ (if (marker.isNestable)
-               (timestamp
-               | markup
-               | (!P(markersToChars(marker)) ~ singleCharText))
-                 .rep(1)
-                 .map(_.toList)
-                 .map(foldTexts[TextMarkup.Content])
-             else
-               (!P(marker.toString) ~ singleCharText)
-                 .rep(1)
-                 .map(_.reduce(_ ++ _))
-                 .map(List(_))).map(TextMarkup(pre.getOrElse(""), marker, _))
-          ~ P(marker.toString)
-          ~ &(post)
-        )
-      }
-  }
+    choice(bold, code, italic, highlight, strikeThrough)
 
   private def lineBreak: P[LineBreak.Hardbreak.type] =
     (
