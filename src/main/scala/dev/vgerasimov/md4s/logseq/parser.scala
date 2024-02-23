@@ -13,6 +13,8 @@ object parser:
   case class Context(
     statusKeywords: Set[String],
     listMaxLevel: Int,
+    headingMinLevel: Int,
+    headingMaxLevel: Int,
     commaSeparatedNodeProperties: Set[String],
     aliasNodeProperty: String
   )
@@ -25,6 +27,10 @@ object parser:
         Set("TODO", "DOING", "DONE", "LATER")
       val listMaxLevel: Int =
         20
+      val headingMinLevel: Int =
+        1
+      val headingMaxLevel: Int =
+        6
       val commaSeparatedNodeProperties: Set[String] =
         Set("tags", "file", "alias", "id", "created", "modified")
       val aliasNodeProperty: String =
@@ -34,6 +40,8 @@ object parser:
     val defaultCtx: Context = Context(
       statusKeywords = default.statusKeywords,
       listMaxLevel = default.listMaxLevel,
+      headingMinLevel = default.headingMinLevel,
+      headingMaxLevel = default.headingMaxLevel,
       commaSeparatedNodeProperties = default.commaSeparatedNodeProperties,
       aliasNodeProperty = default.aliasNodeProperty
     )
@@ -48,7 +56,7 @@ class parser(ctx: Context = Context.defaultCtx):
   def document: P[MarkdownAST] =
     blockElement()
       .rep(1)
-      .map(blocks => collapseHeadedSections(blocks))
+      .map(blocks => collapseHeadedSections(ctx)(blocks))
       .map(blocks => MarkdownAST(blocks))
 
   private def inlineContainerWithoutEmphasis: P[InlineContainer] =
@@ -57,7 +65,7 @@ class parser(ctx: Context = Context.defaultCtx):
       .map(InlineContainer.apply)
 
   private def inlineContainer: P[InlineContainer] =
-    (choice(timestamp, link, emphasis, (!eol ~ singleCharText)).+ ~ eolOrEnd)
+    (choice(timestamp, link, emphasis, (!eol ~ singleCharText)).* ~ eolOrEnd)
       .map(_.toList)
       .map(foldTexts[InlineElement])
       .map(InlineContainer.apply)
@@ -174,7 +182,7 @@ class parser(ctx: Context = Context.defaultCtx):
       codeBlock,
       paragraph,
       table,
-      emptyLines()
+      // emptyLines()
     )
 
   private def link: P[Link] =

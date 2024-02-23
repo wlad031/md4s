@@ -12,22 +12,19 @@ object ops:
     import models.Table.*
     import models.Table.Row.*
 
-    extension (table: Table)
-      def + (that: Row): Table = Table(table.rows ++ List(that))
+    extension (table: Table) def + (that: Row): Table = Table(table.rows ++ List(that))
 
     extension (row: Row)
       def + (that: Row): Table = Table(List(row, that))
       def asTable: Table = Table(List(row))
 
-    extension (cells: Cells)
-      def | (cell: Cell): Cells = Cells(cells.cells ++ List(cell))
+    extension (cells: Cells) def | (cell: Cell): Cells = Cells(cells.cells ++ List(cell))
 
     extension (cell: Cell)
       def | (that: Cell): Cells = Cells(List(cell, that))
       def asRow: Cells = Cells(List(cell))
 
-    def $ : String => Cell = content =>
-      Cell(InlineContainer(List(Text(content))))
+    def $ : String => Cell = content => Cell(InlineContainer(List(Text(content))))
     def sep: Separator.type = Separator
 
   private def fold[A >: B, B : ClassTag](
@@ -52,8 +49,7 @@ object ops:
       .reverse
   }
 
-  extension (text: Text)
-    def ++ (that: Text): Text = Text(text.content ++ that.content)
+  extension (text: Text) def ++ (that: Text): Text = Text(text.content ++ that.content)
 
   // extension (marker: TextMarkup.Marker)
   //   def isNestable: Boolean = marker match
@@ -64,9 +60,105 @@ object ops:
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
 
-  private[md4s] def collapseHeadedSections(
+  private[md4s] def collapseHeadedSections(ctx: parser.Context)(
     elements: List[BlockElement]
   ): List[BlockElement] =
+
+    // I have no clue how to works
+
+    def createHeadedSections(elements: List[BlockElement]): List[BlockElement] = {
+
+      def insert(
+        sections: List[BlockElement],
+        newElement: BlockElement,
+        level: Int
+      ): List[BlockElement] = {
+        sections match {
+          case Nil => List(newElement)
+          case last :: rest =>
+            last match {
+              case HeadedSection(heading, content) if heading.headerLevel < level =>
+                val updatedSection = HeadedSection(heading, content :+ newElement)
+                rest :+ updatedSection
+              case HeadedSection(heading, content) if heading.headerLevel >= level =>
+                val updatedContent = insert(content, newElement, level)
+                val updatedSection = HeadedSection(heading, updatedContent)
+                rest :+ updatedSection
+              case _ => sections :+ newElement
+            }
+        }
+      }
+
+      def createSubSections(
+        elements: List[BlockElement],
+        acc: List[BlockElement]
+      ): List[BlockElement] = {
+        elements match {
+          case (heading: Heading) :: tail =>
+            val nestedSections = createSubSections(
+              tail.takeWhile {
+                case h: Heading => h.headerLevel > heading.headerLevel
+                case _          => true
+              },
+              List.empty
+            )
+            val remainingElements = tail.dropWhile {
+              case h: Heading => h.headerLevel > heading.headerLevel
+              case _          => false
+            }
+            createSubSections(
+              remainingElements,
+              insert(acc, HeadedSection(heading, nestedSections), heading.headerLevel)
+            )
+          case other :: tail =>
+            createSubSections(tail, acc :+ other)
+          case Nil =>
+            acc
+        }
+      }
+
+      createSubSections(elements, List.empty)
+    }
+
+    def createHeadedSections1(elements: List[BlockElement]): List[BlockElement] = {
+      def nestElements(
+        current: List[BlockElement],
+        stack: List[(Heading, List[BlockElement])]
+      ): List[BlockElement] = current match {
+        case (h: Heading) :: tail =>
+          stack match {
+            case (prevHeading, prevContent) :: rest if h.headerLevel > prevHeading.headerLevel =>
+              nestElements(tail, (h, Nil) :: stack) // Push new heading on the stack
+            case _ =>
+              val newSection = stack.reverse.map { case (heading, content) =>
+                HeadedSection(heading, content)
+              }
+              newSection.headOption.toList ++ nestElements(
+                tail,
+                List((h, Nil))
+              ) // New section or same level
+          }
+        case other :: tail =>
+          stack match {
+            case (heading, content) :: rest =>
+              nestElements(tail, (heading, content :+ other) :: rest) // Continue building content
+            case Nil =>
+              nestElements(tail, stack) // Nothing to do, just continue
+          }
+        case Nil if stack.nonEmpty =>
+          // At the end, fold the stack into nested HeadedSections
+          stack.foldRight(List.empty[BlockElement]) { case ((heading, content), acc) =>
+            HeadedSection(heading, content) :: acc
+          }
+        case Nil =>
+          List.empty // All done, return empty list
+      }
+
+      nestElements(elements, Nil)
+    }
+
+    // createHeadedSections1(elements)
+
     elements
       .foldLeft[List[BlockElement]](Nil)((accumulator, element) =>
         (element, accumulator) match
@@ -91,7 +183,6 @@ object ops:
         case x => x
       }
       .reverse
-
 // private[md4s] def foldParagraphs[A >: Paragraph](objects: List[A]): List[A] =
 //   for {
 //     element <- fold[A, Paragraph](objects, _ ++ _)
