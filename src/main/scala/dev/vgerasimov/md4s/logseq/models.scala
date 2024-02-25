@@ -1,6 +1,9 @@
 package dev.vgerasimov.md4s
 package logseq
 
+import upickle.default.{ ReadWriter }
+
+
 object models:
 
   /** Represents the root of a Markdown document AST. */
@@ -11,28 +14,26 @@ object models:
     * elements where each element corresponds to items such paragraphs, code
     * blocks, and so on.
     */
-  case class MarkdownAST(blocks: List[BlockElement]) extends MarkdownDocument
+  case class MarkdownAST(blocks: List[BlockElement]) extends MarkdownDocument derives ReadWriter
 
-  sealed trait BlockElement extends MarkdownDocument
+  sealed trait BlockElement extends MarkdownDocument  derives ReadWriter
 
-  case class EmptyLines(length: Int) extends BlockElement
-
-  case class Status(value: String)
-  case class Priority(value: Char)
-  case class PropertyDrawer(nodes: List[PropertyDrawer.Node])
+  case class Status(value: String) derives ReadWriter
+  case class Priority(value: Char) derives ReadWriter
+  case class PropertyDrawer(nodes: List[PropertyDrawer.Node]) derives ReadWriter
   object PropertyDrawer:
-    case class Node(name: String, value: Option[InlineContainer] = None)
+    case class Node(name: String, value: Option[InlineContainer] = None) derives ReadWriter
 
-  sealed trait InlineElement
+  sealed trait InlineElement derives ReadWriter
 
   case class InlineContainer(
     elements: List[InlineElement]
-  ) extends InlineElement
+  ) extends InlineElement derives ReadWriter
 
   case class HeadedSection(
     heading: Heading,
     content: List[BlockElement]
-  ) extends BlockElement
+  ) extends BlockElement derives ReadWriter
 
   case class Heading(
     content: Option[InlineContainer],
@@ -40,340 +41,159 @@ object models:
     status: Option[Status] = None,
     priority: Option[Priority] = None,
     propertyDrawer: Option[PropertyDrawer] = None
-  ) extends BlockElement
+  ) extends BlockElement derives ReadWriter
 
   case class Paragraph(
     content: InlineContainer,
     propertyDrawer: Option[PropertyDrawer] = None
-  ) extends BlockElement
+  ) extends BlockElement derives ReadWriter
 
-  sealed trait MarkdownList extends BlockElement
+  sealed trait MarkdownList extends BlockElement derives ReadWriter
   object MarkdownList:
-    case class Ordered(items: List[Item]) extends MarkdownList
-    case class Unordered(items: List[Item]) extends MarkdownList
-    case class Item(content: List[BlockElement])
+    case class Ordered(items: List[Item]) extends MarkdownList derives ReadWriter
+    case class Unordered(items: List[Item]) extends MarkdownList derives ReadWriter
+    case class Item(content: List[BlockElement]) derives ReadWriter
 
-  case class Blockquote(content: List[BlockElement]) extends BlockElement
+  case class Blockquote(content: List[BlockElement]) extends BlockElement derives ReadWriter
 
   case class CodeBlock(
     codeText: String,
     language: Option[String] = None
-  ) extends BlockElement
+  ) extends BlockElement derives ReadWriter
 
-  case class HorizontalRuler() extends BlockElement
+  case class HorizontalRuler() extends BlockElement derives ReadWriter
 
   case class Table(
     rows: List[Table.Row]
-  ) extends BlockElement
+  ) extends BlockElement derives ReadWriter
   object Table:
-    sealed trait Row
+    sealed trait Row derives ReadWriter
     object Row:
-      case object Separator extends Row
-      case class Cells(cells: List[Cell]) extends Row
-    case class Cell(content: InlineContainer)
+      case object Separator extends Row derives ReadWriter
+      case class Cells(cells: List[Cell]) extends Row derives ReadWriter
+    case class Cell(content: InlineContainer) derives ReadWriter
 
-  case class HTMLBlock(
-    htmlContent: String
-  ) extends BlockElement
-
-  case class LinkReferenceDefinition(
-    label: String,
-    url: String,
-    title: Option[String]
-  ) extends BlockElement
-
-  case class Text(content: String) extends InlineElement
+  case class Text(content: String) extends InlineElement derives ReadWriter
 
   case class Emphasis(
     marker: Emphasis.Marker,
     contents: InlineContainer
-  ) extends InlineElement
+  ) extends InlineElement derives ReadWriter
 
   object Emphasis:
-    sealed trait Marker(value: String)
+    sealed trait Marker derives ReadWriter
     object Marker:
-      case class Bold(value: String) extends Marker(value)
-      case class Italic(value: String) extends Marker(value)
-      case class StrikeThrough(value: String) extends Marker(value)
-      case class Code(value: String) extends Marker(value)
-      case class Highlight(value: String) extends Marker(value)
+      case class Bold(value: String) extends Marker derives ReadWriter
+      case class Italic(value: String) extends Marker derives ReadWriter
+      case class StrikeThrough(value: String) extends Marker derives ReadWriter
+      case class Code(value: String) extends Marker derives ReadWriter
+      case class Highlight(value: String) extends Marker derives ReadWriter
 
-  sealed trait Link extends InlineElement
+  sealed trait Link extends InlineElement derives ReadWriter
   object Link:
-    sealed trait Internal extends Link
+    sealed trait Internal extends Link derives ReadWriter
     case class ClassicInternalLink(
       location: Link.Location.Internal,
       text: Option[Text]
-    ) extends Internal
+    ) extends Internal derives ReadWriter
     case class TagInternalLink(location: Location.Internal.Page)
-        extends Internal
+        extends Internal derives ReadWriter
     case class ExternalLink(
       location: Location.External,
       text: Option[Text]
-    ) extends Link
+    ) extends Link derives ReadWriter
 
-    sealed trait Location
+    sealed trait Location derives ReadWriter
     object Location:
-      case class External(value: String) extends Location
-      sealed trait Internal extends Location
+      case class External(value: String) extends Location derives ReadWriter
+      sealed trait Internal extends Location derives ReadWriter
       object Internal:
-        case class Page(value: String) extends Internal
-        case class Block(value: String) extends Internal
+        case class Page(value: String) extends Internal derives ReadWriter
+        case class Block(value: String) extends Internal derives ReadWriter
 
   case class Image(altText: String, url: String, title: Option[String])
-      extends InlineElement
+      extends InlineElement derives ReadWriter
 
-  sealed trait LineBreak extends InlineElement
+  sealed trait LineBreak extends InlineElement derives ReadWriter
   object LineBreak:
-    case object Softbreak extends LineBreak
-    case object Hardbreak extends LineBreak
+    case object Softbreak extends LineBreak derives ReadWriter
+    case object Hardbreak extends LineBreak derives ReadWriter
 
-  case class HTMLInline(htmlContent: String) extends InlineElement
-
-  case class Autolink(url: String) extends InlineElement
-
-  case class EmailAutolink(email: String) extends InlineElement
-
-  case class LinkReference(
-    label: String,
-    reference: String,
-    content: InlineContainer
-  ) extends InlineElement
-
-  case class ImageReference(label: String, reference: String, altText: String)
-      extends InlineElement
-
-  case class Footnote(content: InlineContainer) extends InlineElement
-
-  case class FootnoteReference(identifier: String) extends InlineElement
-
-  sealed trait Timestamp extends InlineElement
+  sealed trait Timestamp extends InlineElement derives ReadWriter
   object Timestamp:
-    sealed trait Active extends Timestamp
-    sealed trait Inactive extends Timestamp
-    sealed trait Range extends Timestamp
+    sealed trait Active extends Timestamp derives ReadWriter
+    sealed trait Inactive extends Timestamp derives ReadWriter
+    sealed trait Range extends Timestamp derives ReadWriter
 
-    case class Diary(value: String) extends Timestamp
+    case class Diary(value: String) extends Timestamp derives ReadWriter
 
     case class ActiveTimestamp(
       date: Date,
       time: Option[Time],
       repeaterOrDelay: Option[RepeaterOrDelay] = None
     ) extends Timestamp
-        with Timestamp.Active
+        with Timestamp.Active derives ReadWriter
 
     case class InactiveTimestamp(
       date: Date,
       time: Option[Time],
       repeaterOrDelay: Option[RepeaterOrDelay] = None
     ) extends Timestamp
-        with Timestamp.Inactive
+        with Timestamp.Inactive derives ReadWriter
 
     case class ActiveTimestampRange(
       from: ActiveTimestamp,
       to: ActiveTimestamp
     ) extends Timestamp
         with Timestamp.Active
-        with Timestamp.Range
-
-    // object ActiveTimestampRange {
-    // def apply(from: ActiveTimestamp, toTime: Time): ActiveTimestampRange =
-    // ActiveTimestampRange(from, from.copy(time = Some(toTime)))
-    // }
+        with Timestamp.Range derives ReadWriter
 
     case class InactiveTimestampRange(
       from: InactiveTimestamp,
       to: InactiveTimestamp
     ) extends Timestamp
         with Timestamp.Inactive
-        with Timestamp.Range
+        with Timestamp.Range derives ReadWriter
 
-    // object InactiveTimestampRange {
-    // def apply(
-    //   from: InactiveTimestamp,
-    //   toTime: Time
-    // ): InactiveTimestampRange =
-    //   InactiveTimestampRange(from, from.copy(time = Some(toTime)))
-    // }
-
-    case class Time(hour: Time.Hour, minute: Time.Minute)
-    // override def toString: String = s"$hour:$minute"
-    // }
+    case class Time(hour: Time.Hour, minute: Time.Minute) derives ReadWriter
 
     object Time:
-      // def of(hour: Int, minute: Int): Time = Time(Hour(hour), Minute(minute))
-
-      case class Hour(value: Int)
-      // require(Hour.isValid(value), s"Invalid hour value: $value")
-
-      // override def toString: String = f"$value%02d"
-      // }
-
-      // object Hour {
-
-      /** Checks that provided value is valid hour. */
-      // def isValid(hour: Int): Boolean = 0 <= hour && hour <= 23
-      // }
-
-      case class Minute(value: Int)
-    // require(Minute.isValid(value), s"Invalid minute value: $value")
-
-    // override def toString: String = f"$value%02d"
-    // }
-
-    // object Minute {
-
-    /** Checks that provided value is valid minute. */
-    // def isValid(minute: Int): Boolean = 0 <= minute && minute <= 59
-    // }
+      case class Hour(value: Int) derives ReadWriter
+      case class Minute(value: Int) derives ReadWriter
 
     case class Date(
       year: Date.Year,
       month: Date.Month,
       day: Date.Day,
       dayName: Option[Date.DayName] = None
-    )
-    // require(
-    //   Date.isValid(year, month, day),
-    //   s"Invalid date: year=$year, month=$month, day=$day"
-    // )
-
-    // override def toString: String =
-    //   dayName match {
-    //     case Some(dn) => s"$year-$month-$day $dn"
-    //     case None     => s"$year-$month-$day"
-    //   }
-    // }
+    ) derives ReadWriter
 
     object Date:
+      case class Year(value: Int) derives ReadWriter
+      case class Month(value: Int) derives ReadWriter
+      case class Day(value: Int) derives ReadWriter
 
-      // def of(
-      //   year: Int,
-      //   month: Int,
-      //   day: Int,
-      //   dayName: Option[String] = None
-      // ): Date =
-      //   Date(
-      //     Year(year),
-      //     Month(month),
-      //     Day(day),
-      //     dayName.flatMap(DayName.fromString)
-      //   )
-
-      // /** Checks that provided values represent a valid date. */
-      // def isValid(year: Year, month: Month, day: Day): Boolean =
-      //   day.value <= month.getNumberOfDays(year.isLeap)
-
-      case class Year(value: Int)
-      // require(Year.isValid(value), s"Invalid year value: $value")
-
-      // /** Indicates whether this year is leap or not. */
-      // def isLeap: Boolean =
-      //   if (value % 4 != 0) false
-      //   else if (value % 100 != 0) true
-      //   else if (value % 400 != 0) false
-      //   else true
-
-      // override def toString: String = f"$value%04d"
-      // }
-
-      // object Year {
-
-      //   /** Checks that provided value is valid year. */
-      //   def isValid(year: Int): Boolean = 0 <= year
-      // }
-
-      case class Month(value: Int)
-      // require(Month.isValid(value), s"Invalid month value: $value")
-
-      /** Returns the number of days in this month. */
-      // def getNumberOfDays(isLeapYear: Boolean = false): Int =
-      //   if (value == 2 && isLeapYear) Month.days(value - 1) + 1
-      //   else Month.days(value - 1)
-
-      // override def toString: String = f"$value%02d"
-      // }
-
-      // object Month {
-
-      /** Checks that provided value is valid month. */
-      // def isValid(month: Int): Boolean = 1 <= month && month <= 12
-
-      // /** Numbers of days in all 12 months for non-leap year. */
-      // private val days: Array[Int] =
-      //   Array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
-      // }
-
-      case class Day(value: Int)
-      // require(Day.isValid(value), s"Invalid day value: $value")
-
-      // override def toString: String = f"$value%02d"
-      // }
-
-      // object Day {
-
-      /** Checks that provided value is valid day. */
-      // def isValid(day: Int): Boolean = 1 <= day && day <= 31
-      // }
-
-      // override def toString: String =
-      //   this match {
-      //     case DayName.Monday    => "Mon"
-      //     case DayName.Tuesday   => "Tue"
-      //     case DayName.Wednesday => "Wed"
-      //     case DayName.Thursday  => "Thu"
-      //     case DayName.Friday    => "Fri"
-      //     case DayName.Saturday  => "Sat"
-      //     case DayName.Sunday    => "Sun"
-      //   }
-      // }
-
-      enum DayName:
+      enum DayName derives ReadWriter:
         case Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
 
-    // def fromString(dayName: String): Option[DayName] =
-    //   dayName match {
-    //     case x if Set("Mon") contains x => Some(Monday)
-    //     case x if Set("Tue") contains x => Some(Tuesday)
-    //     case x if Set("Wed") contains x => Some(Wednesday)
-    //     case x if Set("Thu") contains x => Some(Thursday)
-    //     case x if Set("Fri") contains x => Some(Friday)
-    //     case x if Set("Sat") contains x => Some(Saturday)
-    //     case x if Set("Sun") contains x => Some(Sunday)
-    //     case _                          => None
-    //   }
-    // }
-    // }
-
-    sealed trait RepeaterOrDelay
+    sealed trait RepeaterOrDelay derives ReadWriter
 
     object RepeaterOrDelay:
-      sealed trait Repeater extends RepeaterOrDelay
-      sealed trait Delay extends RepeaterOrDelay
-      case class And(repeater: Repeater, delay: Delay) extends RepeaterOrDelay
-      case class CumulateRepeater(value: Value, unit: Unit) extends Repeater
-      case class CatchUpRepeater(value: Value, unit: Unit) extends Repeater
-      case class RestartRepeater(value: Value, unit: Unit) extends Repeater
-      case class AllTypeDelay(value: Value, unit: Unit) extends Delay
-      case class FirstTypeDelay(value: Value, unit: Unit) extends Delay
+      sealed trait Repeater extends RepeaterOrDelay derives ReadWriter
+      sealed trait Delay extends RepeaterOrDelay derives ReadWriter
+      case class And(repeater: Repeater, delay: Delay) extends RepeaterOrDelay derives ReadWriter
+      case class CumulateRepeater(value: Value, unit: Unit) extends Repeater derives ReadWriter
+      case class CatchUpRepeater(value: Value, unit: Unit) extends Repeater derives ReadWriter
+      case class RestartRepeater(value: Value, unit: Unit) extends Repeater derives ReadWriter
+      case class AllTypeDelay(value: Value, unit: Unit) extends Delay derives ReadWriter
+      case class FirstTypeDelay(value: Value, unit: Unit) extends Delay derives ReadWriter
 
-      case class Value(value: Int)
+      case class Value(value: Int) derives ReadWriter
 
-      sealed trait Unit
-
+      sealed trait Unit derives ReadWriter
       object Unit:
-        case object Hour extends Unit
-        case object Day extends Unit
-        case object Week extends Unit
-        case object Month extends Unit
-        case object Year extends Unit
-
-// def fromString(unit: String): Option[Unit] =
-//   unit match {
-//     case x if Set("h").contains(x) => Some(Hour)
-//     case x if Set("d").contains(x) => Some(Day)
-//     case x if Set("w").contains(x) => Some(Week)
-//     case x if Set("m").contains(x) => Some(Month)
-//     case x if Set("y").contains(x) => Some(Year)
-//     case _                         => None
-//   }
+        case object Hour extends Unit derives ReadWriter
+        case object Day extends Unit derives ReadWriter
+        case object Week extends Unit derives ReadWriter
+        case object Month extends Unit derives ReadWriter
+        case object Year extends Unit derives ReadWriter

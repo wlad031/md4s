@@ -1,5 +1,11 @@
 package dev.vgerasimov.md4s
 
+import dev.vgerasimov.slowparse.POut.Success
+import dev.vgerasimov.slowparse.POut.Failure
+
+import upickle.default.{ ReadWriter as RW, *, given }
+import dev.vgerasimov.md4s.logseq.models.*
+
 @main def run =
   val pprint2 =
     pprint.copy(
@@ -41,4 +47,11 @@ package dev.vgerasimov.md4s
     .mkString
   // toParse = """hello `code` world""".stripMargin
   var parsed = parser(toParse)
-  pprint2.pprintln(parsed)
+  parsed match
+    case Success(value, parsed, remaining, parserLabel) => 
+      // println(write(value))
+      // pprint2.pprintln(value)
+      println(logseq.raw.toRaw(value))
+    case Failure(message, parserLabel) =>
+      println(s"Failed to parse: $message")
+

@@ -30,7 +30,64 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
     )
   }
 
-  test("Full parser should parse some one-way nested headings") {
+  test("Full parser should parse some one-way nested headings - simple") {
+    val toParse = """# Heading 1
+                   |## Heading 2
+                   |### Heading 3
+                   |""".stripMargin
+    checkParser(
+      parser.document,
+      toParse,
+      MarkdownAST(
+        List(
+          HeadedSection(
+            Heading(Some(InlineContainer(List(Text("Heading 1")))), 1),
+            List(
+              HeadedSection(
+                Heading(Some(InlineContainer(List(Text("Heading 2")))), 2),
+                List(
+                  HeadedSection(
+                    Heading(Some(InlineContainer(List(Text("Heading 3")))), 3),
+                    List()
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("Full parser should parse some one-way nested headings - two on level 2") {
+    val toParse = """# Heading 1
+                   |## Heading 2.1
+                   |## Heading 2.2
+                   |""".stripMargin
+    checkParser(
+      parser.document,
+      toParse,
+      MarkdownAST(
+        List(
+          HeadedSection(
+            Heading(Some(InlineContainer(List(Text("Heading 1")))), 1),
+            List(
+              HeadedSection(
+                Heading(Some(InlineContainer(List(Text("Heading 2.1")))), 2),
+                List()
+              ),
+              HeadedSection(
+                Heading(Some(InlineContainer(List(Text("Heading 2.2")))), 2),
+                List()
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("Full parser should parse some nested headings") {
     val toParse = """# Heading 1
                    |## Heading 2
                    |## Heading 2.2
@@ -114,4 +171,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
       case POut.Success(value, _, _, _) => fail(s"$toParse parsed to $value")
       case _                            =>
     }
+
+  def ignore(v: String)(body: => Any): Unit = (
+    ()
+  )
 }

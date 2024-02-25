@@ -56,7 +56,7 @@ class parser(ctx: Context = Context.defaultCtx):
   def document: P[MarkdownAST] =
     blockElement()
       .rep(1)
-      .map(blocks => collapseHeadedSections(ctx)(blocks))
+      // .map(blocks => collapseHeadedSections(ctx)(blocks))
       .map(blocks => MarkdownAST(blocks))
 
   private def inlineContainerWithoutEmphasis: P[InlineContainer] =
@@ -70,28 +70,41 @@ class parser(ctx: Context = Context.defaultCtx):
       .map(foldTexts[InlineElement])
       .map(InlineContainer.apply)
 
-  private def heading(minLevel: Int, maxLevel: Int): P[Heading] =
-    def headerLevel: P[Int] =
-      P("#").rep(min = minLevel, max = maxLevel).!.map(_.length)
+  private def headedSection(
+    headingMinLevel: Int,
+    headingMaxLevel: Int
+  ): P[HeadedSection] =
+    if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel)
+      fail[HeadedSection]
+    else
+      (heading(headingMinLevel, headingMaxLevel) ~ blockElement(headingMinLevel = headingMinLevel + 1, headingMaxLevel = headingMaxLevel).*)
+        .map { case (heading, content) => HeadedSection(heading, content) }
 
-    def priority: P[Priority] =
-      (P("[#") ~ fromRange("A-Z").! ~ P("]"))
-        .map(s => s.toList.head)
-        .map(Priority.apply)
+  private def heading(headingMinLevel: Int, headingMaxLevel: Int): P[Heading] =
+    if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel)
+      fail[Heading]
+    else
+      def headerLevel: P[Int] =
+        (P("#").rep(min = headingMinLevel, max = headingMaxLevel) ~ !P("#")).!.map(_.length)
 
-    def status: P[Status] =
-      ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
+      def priority: P[Priority] =
+        (P("[#") ~ fromRange("A-Z").! ~ P("]"))
+          .map(s => s.toList.head)
+          .map(Priority.apply)
 
-    (!listMarker ~ (headerLevel ~ s1) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
-      case (
-            headerLevel: Int,
-            priority: Option[Priority],
-            status: Option[Status],
-            content: Option[InlineContainer],
-            drawer: Option[PropertyDrawer]
-          ) =>
-        Heading(content, headerLevel, status, priority, drawer)
-    }
+      def status: P[Status] =
+        ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
+
+      (!listMarker ~ (headerLevel ~ s1) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
+        case (
+              headerLevel: Int,
+              priority: Option[Priority],
+              status: Option[Status],
+              content: Option[InlineContainer],
+              drawer: Option[PropertyDrawer]
+            ) =>
+          Heading(content, headerLevel, status, priority, drawer)
+      }
 
   private def propertyDrawer: P[PropertyDrawer] = {
 
@@ -148,19 +161,13 @@ class parser(ctx: Context = Context.defaultCtx):
             .map(items => MarkdownList.Ordered(items))
       }
 
+  // TODO: Make !_conditions better
   private def paragraph: P[Paragraph] =
-    !(s0 ~ listMarker)
+    !((s0 ~ listMarker) | (s0 ~ P("#").+ ~ s1))
     ~ (inlineContainer ~ propertyDrawer.?).map {
       case (content: InlineContainer, drawer: Option[PropertyDrawer]) =>
         Paragraph(content, drawer)
     }
-
-  private def emptyLines(max: Option[Int] = None): P[EmptyLines] =
-    max
-      .map(v => eol.rep(min = 2, max = v) ~ !eol)
-      .getOrElse(eol.rep(1))
-      .!
-      .map(s => EmptyLines(s.length))
 
   private def codeBlock: P[CodeBlock] =
     def surrounder = P("```")
@@ -178,7 +185,7 @@ class parser(ctx: Context = Context.defaultCtx):
   ): P[BlockElement] =
     choice(
       list(listMinLevel, listMaxLevel),
-      heading(headingMinLevel, headingMaxLevel),
+      headedSection(headingMinLevel, headingMaxLevel),
       codeBlock,
       paragraph,
       table,
