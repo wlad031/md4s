@@ -3,18 +3,33 @@ package dev.vgerasimov.md4s
 import dev.vgerasimov.slowparse.POut.Success
 import dev.vgerasimov.slowparse.POut.Failure
 
+import java.nio.file.*
 import upickle.default.{ ReadWriter as RW, *, given }
 import dev.vgerasimov.md4s.logseq.models.*
+import scala.jdk.CollectionConverters.{ *, given }
 
-@main def run =
-  val pprint2 =
+val pprint2 =
     pprint.copy(
-      additionalHandlers = {
-        case logseq.models.Text(s) :: Nil => pprint.Tree.Literal(s)
-        case logseq.models.Text(s)        => pprint.Tree.Literal(s)
-      }
+      // additionalHandlers = {
+      //   // case logseq.models.Text(s) :: Nil => pprint.Tree.Literal(s)
+      //   // case logseq.models.Text(s)        => pprint.Tree.Literal(s)
+      // }
     )
-  val parser = logseq.parser().document
+val parser = logseq.parser().document
+
+@main def run = parseAllLogseq
+
+def parseAndPrint(text: String) =
+  parser(text) match
+    case Success(value, parsed, remaining, parserLabel) => None
+      // println(write(value))
+      // pprint2.pprintln(value)
+      // println(logseq.raw.toRaw(value))
+    case Failure(message, parserLabel) =>
+      println(text)
+      println(s"Failed to parse: $message")
+
+def runSingleParsing =
   var toParse = """## hello
   |type:: foo
   |type2:: bar
@@ -46,12 +61,13 @@ import dev.vgerasimov.md4s.logseq.models.*
     )
     .mkString
   // toParse = """hello `code` world""".stripMargin
-  var parsed = parser(toParse)
-  parsed match
-    case Success(value, parsed, remaining, parserLabel) => 
-      // println(write(value))
-      // pprint2.pprintln(value)
-      println(logseq.raw.toRaw(value))
-    case Failure(message, parserLabel) =>
-      println(s"Failed to parse: $message")
+  parseAndPrint(toParse)
 
+def parseAllLogseq =
+  val currentTime = System.currentTimeMillis()
+  Files.walk(Paths.get("/Users/vgerasimov/Logseq/pages")).iterator().asScala.filter(Files.isRegularFile(_))
+  .map(f => scala.io.Source.fromFile(f.toFile).mkString)
+  .foreach(f => {
+    parseAndPrint(f)
+  })
+  println(s"Time: ${System.currentTimeMillis() - currentTime}ms")
