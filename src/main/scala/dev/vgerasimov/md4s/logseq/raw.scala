@@ -17,7 +17,7 @@ import dev.vgerasimov.md4s.logseq.models.Emphasis.Marker
 
 object raw:
 
-  def toRaw(document: MarkdownAST): String =
+  def toRaw(document: LogseqMarkdown): String =
     toRaw(document.blocks)
 
   def toRaw(blockElements: List[BlockElement]): String =
@@ -25,11 +25,11 @@ object raw:
 
   def toRaw(blockElement: BlockElement): String =
     blockElement match
-      case HeadedSection(heading, content) => s"${toRaw(heading)}\n${toRaw(content)}"
-      case Heading(Some(content), headerLevel, status, priority, propertyDrawer) => s"${"#"*headerLevel} ${toRaw(content)}"
-      case Paragraph(content, propertyDrawer) => s"${toRaw(content)}\n"
-      case dev.vgerasimov.md4s.logseq.models.MarkdownList.Ordered(items) => items.map(toRaw).mkString
-      case Unordered(items) => items.map(toRaw).mkString
+      case HeadedSection(heading, content, _) => s"${toRaw(heading)}\n${toRaw(content)}"
+      case Heading(Some(content), headerLevel, status, priority, propertyDrawer, _) => s"${"#"*headerLevel} ${toRaw(content)}"
+      case Paragraph(content, propertyDrawer, _) => s"${toRaw(content)}\n"
+      case dev.vgerasimov.md4s.logseq.models.MarkdownList.Ordered(items, _) => items.map(toRaw).mkString
+      case Unordered(items, _) => items.map(toRaw).mkString
       // case HorizontalRuler() =>
       // case Table(rows) =>
       case x => x.toString()

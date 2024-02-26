@@ -16,7 +16,7 @@ object parser:
     headingMinLevel: Int,
     headingMaxLevel: Int,
     commaSeparatedNodeProperties: Set[String],
-    aliasNodeProperty: String
+    aliasNodeProperty: String,
   )
 
   object Context:
@@ -53,11 +53,15 @@ import parser.*
 
 class parser(ctx: Context = Context.defaultCtx):
 
-  def document: P[MarkdownAST] =
-    blockElement()
+  def document: P[LogseqMarkdown] =
+    blockElement(minIndentation = 0)
       .rep(1)
       // .map(blocks => collapseHeadedSections(ctx)(blocks))
-      .map(blocks => MarkdownAST(blocks))
+      .map(blocks => LogseqMarkdown(blocks))
+
+  def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =
+    ((P("  ")).rep(min = min, max = max).! ~ !(P("\t") | P(" ")))
+      .map(v => Indentation(v.replace("  ", " ").length, v))
 
   private def inlineContainerWithoutEmphasis: P[InlineContainer] =
     (choice(timestamp, link, (!eol ~ singleCharText)).+).map(_.toList)
@@ -72,13 +76,15 @@ class parser(ctx: Context = Context.defaultCtx):
 
   private def headedSection(
     headingMinLevel: Int,
-    headingMaxLevel: Int
+    headingMaxLevel: Int,
+    minIndentation: Int,
+    listMinLevel: Int,
   ): P[HeadedSection] =
     if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel)
       fail[HeadedSection]
     else
-      (heading(headingMinLevel, headingMaxLevel) ~ blockElement(headingMinLevel = headingMinLevel + 1, headingMaxLevel = headingMaxLevel).*)
-        .map { case (heading, content) => HeadedSection(heading, content) }
+      (indentation(min = minIndentation) ~ heading(headingMinLevel, headingMaxLevel) ~ blockElement(listMinLevel = listMinLevel, headingMinLevel = headingMinLevel + 1, headingMaxLevel = headingMaxLevel, minIndentation = minIndentation).*)
+        .map { case (indentation, heading, content) => HeadedSection(heading, content, indentation) }
 
   private def heading(headingMinLevel: Int, headingMaxLevel: Int): P[Heading] =
     if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel)
@@ -131,42 +137,55 @@ class parser(ctx: Context = Context.defaultCtx):
 
   private def list(
     listMinLevel: Int,
-    listMaxLevel: Int
+    listMaxLevel: Int,
+    minIndentation: Int
   ): P[MarkdownList] =
     if (listMinLevel > ctx.listMaxLevel || listMinLevel > listMaxLevel)
       fail[MarkdownList]
     else
-      def indentation: P[Int] =
-        P(P("\t").rep(min = listMinLevel, max = listMaxLevel) ~ !P("\t")).!.map(
-          _.length
-        )
-
-      &(indentation.!! ~ listMarker).flatMap {
-        case marker: String =>
-          (indentation.!!
-          ~ P(marker)
-          ~ s0
-          ~ blockElement(listMinLevel = listMinLevel + 1).rep())
-            .map(items => MarkdownList.Item(items))
-            .rep(1)
-            .map(items => MarkdownList.Unordered(items))
-        case marker: Int =>
-          (indentation.!!
-          ~ orderedListMarker.!!
-          ~ s0
-          ~ (blockElement(listMinLevel = listMinLevel + 1)
-            .rep())
-            .map(items => MarkdownList.Item(items)))
-            .rep(1)
-            .map(items => MarkdownList.Ordered(items))
+      &(indentation(min = listMinLevel) ~ listMarker ~ s1).flatMap {
+        case (ind, marker: String) => 
+          (indentation(min = listMinLevel).!! 
+           ~ listMarker.!! 
+           ~ s1
+           ~ (
+              blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).? 
+            ~ blockElement(minIndentation = ind.level + 1, listMinLevel = listMinLevel + 1).rep(min = 0)
+           )
+            .map { 
+              case (Some(first), next) => MarkdownList.Item(first :: next) 
+              case (None, next) => MarkdownList.Item(next) 
+            })
+            .rep(min = 1)
+            .map { items => MarkdownList.Unordered(items, ind) }
+        case _ => ???
       }
+      // &(indentation(min = minIndentation) ~ listMarker).flatMap {
+      //   case (ind, marker: String =>
+      //     (indentation(min = minIndentation)
+      //     ~ P(marker)
+      //     ~ s0
+      //     ~ blockElement(minIndentation = minIndentation + 1, listMinLevel = listMinLevel + 1).rep(min = 0)
+      //       .map(items => MarkdownList.Item(items))
+      //       .rep(min = 1))
+      //       .map { case (ind, items) => MarkdownList.Unordered(items, ind) }
+      //   case marker: Int =>
+      //     ???
+          // (indentation(min = minIndentation)
+          // ~ orderedListMarker.!!
+          // ~ s0
+          // ~ (blockElement(minIndentation = minIndentation + 1, listMinLevel = listMinLevel + 1).rep(min = 0))
+          //   .map(items => MarkdownList.Item(items))
+          //   .rep(min = 1))
+          //   .map { case (ind, items) => MarkdownList.Ordered(items, ind) }
+      // }
 
   // TODO: Make !_conditions better
-  private def paragraph: P[Paragraph] =
+  private def paragraph(minIndentation: Int): P[Paragraph] =
     !((s0 ~ listMarker) | (s0 ~ P("#").+ ~ s1))
-    ~ (inlineContainer ~ propertyDrawer.?).map {
-      case (content: InlineContainer, drawer: Option[PropertyDrawer]) =>
-        Paragraph(content, drawer)
+    ~ (indentation(min = minIndentation) ~ inlineContainer ~ propertyDrawer.?).map {
+      case (ind, content, drawer) =>
+        Paragraph(content, drawer, ind)
     }
 
   private def codeBlock: P[CodeBlock] =
@@ -178,19 +197,21 @@ class parser(ctx: Context = Context.defaultCtx):
     ).map { case (lang, content) => CodeBlock(content, lang) }
 
   private def blockElement(
+    minIndentation: Int,
     headingMinLevel: Int = 1,
     headingMaxLevel: Int = 6,
     listMinLevel: Int = 0,
-    listMaxLevel: Int = ctx.listMaxLevel
+    listMaxLevel: Int = ctx.listMaxLevel,
   ): P[BlockElement] =
-    choice(
-      list(listMinLevel, listMaxLevel),
-      headedSection(headingMinLevel, headingMaxLevel),
-      codeBlock,
-      paragraph,
-      table,
-      // emptyLines()
-    )
+    if (minIndentation > 16) fail[BlockElement]
+    else
+      choice(
+        list(listMinLevel, listMaxLevel, minIndentation),
+        headedSection(headingMinLevel, headingMaxLevel, minIndentation, listMinLevel),
+        codeBlock,
+        paragraph(minIndentation),
+        table,
+      )
 
   private def link: P[Link] =
     import Link.*

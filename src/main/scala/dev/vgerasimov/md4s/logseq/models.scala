@@ -1,57 +1,67 @@
 package dev.vgerasimov.md4s
 package logseq
 
+// TODO: remove it
 import upickle.default.{ ReadWriter }
 
+import dev.vgerasimov.md4s.models.MarkdownDocument
 
 object models:
 
-  /** Represents the root of a Markdown document AST. */
-  sealed trait MarkdownDocument
-
-  /** A Markdown document can now be constructed by assembling these elements
-    * into a hierarchy. For example, a document might contain a list of block
-    * elements where each element corresponds to items such paragraphs, code
-    * blocks, and so on.
+  /** A Markdown document can now be constructed by assembling these elements into a hierarchy. For
+    * example, a document might contain a list of block elements where each element corresponds to
+    * items such paragraphs, code blocks, and so on.
     */
-  case class MarkdownAST(blocks: List[BlockElement]) extends MarkdownDocument derives ReadWriter
+  case class LogseqMarkdown(blocks: List[BlockElement]) extends MarkdownDocument derives ReadWriter
 
-  sealed trait BlockElement extends MarkdownDocument  derives ReadWriter
+  sealed trait BlockElement extends MarkdownDocument derives ReadWriter
 
   case class Status(value: String) derives ReadWriter
   case class Priority(value: Char) derives ReadWriter
   case class PropertyDrawer(nodes: List[PropertyDrawer.Node]) derives ReadWriter
   object PropertyDrawer:
     case class Node(name: String, value: Option[InlineContainer] = None) derives ReadWriter
+  case class Indentation(level: Int, value: String) derives ReadWriter
+  object Indentation:
+    val zero: Indentation = Indentation(0, "")
 
   sealed trait InlineElement derives ReadWriter
 
   case class InlineContainer(
     elements: List[InlineElement]
-  ) extends InlineElement derives ReadWriter
+  ) extends InlineElement
+      derives ReadWriter
 
   case class HeadedSection(
     heading: Heading,
-    content: List[BlockElement]
-  ) extends BlockElement derives ReadWriter
+    content: List[BlockElement],
+    indentation: Indentation = Indentation.zero
+  ) extends BlockElement
+      derives ReadWriter
 
   case class Heading(
     content: Option[InlineContainer],
     headerLevel: Int,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
-    propertyDrawer: Option[PropertyDrawer] = None
-  ) extends BlockElement derives ReadWriter
+    propertyDrawer: Option[PropertyDrawer] = None,
+    indentation: Indentation = Indentation.zero
+  ) extends BlockElement
+      derives ReadWriter
 
   case class Paragraph(
     content: InlineContainer,
-    propertyDrawer: Option[PropertyDrawer] = None
-  ) extends BlockElement derives ReadWriter
+    propertyDrawer: Option[PropertyDrawer] = None,
+    indentation: Indentation = Indentation.zero
+  ) extends BlockElement
+      derives ReadWriter
 
   sealed trait MarkdownList extends BlockElement derives ReadWriter
   object MarkdownList:
-    case class Ordered(items: List[Item]) extends MarkdownList derives ReadWriter
-    case class Unordered(items: List[Item]) extends MarkdownList derives ReadWriter
+    case class Ordered(items: List[Item], indentation: Indentation = Indentation.zero)
+        extends MarkdownList derives ReadWriter
+    case class Unordered(items: List[Item], indentation: Indentation = Indentation.zero)
+        extends MarkdownList derives ReadWriter
     case class Item(content: List[BlockElement]) derives ReadWriter
 
   case class Blockquote(content: List[BlockElement]) extends BlockElement derives ReadWriter
@@ -59,13 +69,16 @@ object models:
   case class CodeBlock(
     codeText: String,
     language: Option[String] = None
-  ) extends BlockElement derives ReadWriter
+  ) extends BlockElement
+      derives ReadWriter
 
   case class HorizontalRuler() extends BlockElement derives ReadWriter
 
   case class Table(
-    rows: List[Table.Row]
-  ) extends BlockElement derives ReadWriter
+    rows: List[Table.Row],
+    indentation: Indentation = Indentation.zero
+  ) extends BlockElement
+      derives ReadWriter
   object Table:
     sealed trait Row derives ReadWriter
     object Row:
@@ -78,8 +91,8 @@ object models:
   case class Emphasis(
     marker: Emphasis.Marker,
     contents: InlineContainer
-  ) extends InlineElement derives ReadWriter
-
+  ) extends InlineElement
+      derives ReadWriter
   object Emphasis:
     sealed trait Marker derives ReadWriter
     object Marker:
@@ -95,13 +108,14 @@ object models:
     case class ClassicInternalLink(
       location: Link.Location.Internal,
       text: Option[Text]
-    ) extends Internal derives ReadWriter
-    case class TagInternalLink(location: Location.Internal.Page)
-        extends Internal derives ReadWriter
+    ) extends Internal
+        derives ReadWriter
+    case class TagInternalLink(location: Location.Internal.Page) extends Internal derives ReadWriter
     case class ExternalLink(
       location: Location.External,
       text: Option[Text]
-    ) extends Link derives ReadWriter
+    ) extends Link
+        derives ReadWriter
 
     sealed trait Location derives ReadWriter
     object Location:
@@ -111,8 +125,8 @@ object models:
         case class Page(value: String) extends Internal derives ReadWriter
         case class Block(value: String) extends Internal derives ReadWriter
 
-  case class Image(altText: String, url: String, title: Option[String])
-      extends InlineElement derives ReadWriter
+  case class Image(altText: String, url: String, title: Option[String]) extends InlineElement
+      derives ReadWriter
 
   sealed trait LineBreak extends InlineElement derives ReadWriter
   object LineBreak:
@@ -132,28 +146,32 @@ object models:
       time: Option[Time],
       repeaterOrDelay: Option[RepeaterOrDelay] = None
     ) extends Timestamp
-        with Timestamp.Active derives ReadWriter
+        with Timestamp.Active
+        derives ReadWriter
 
     case class InactiveTimestamp(
       date: Date,
       time: Option[Time],
       repeaterOrDelay: Option[RepeaterOrDelay] = None
     ) extends Timestamp
-        with Timestamp.Inactive derives ReadWriter
+        with Timestamp.Inactive
+        derives ReadWriter
 
     case class ActiveTimestampRange(
       from: ActiveTimestamp,
       to: ActiveTimestamp
     ) extends Timestamp
         with Timestamp.Active
-        with Timestamp.Range derives ReadWriter
+        with Timestamp.Range
+        derives ReadWriter
 
     case class InactiveTimestampRange(
       from: InactiveTimestamp,
       to: InactiveTimestamp
     ) extends Timestamp
         with Timestamp.Inactive
-        with Timestamp.Range derives ReadWriter
+        with Timestamp.Range
+        derives ReadWriter
 
     case class Time(hour: Time.Hour, minute: Time.Minute) derives ReadWriter
 
