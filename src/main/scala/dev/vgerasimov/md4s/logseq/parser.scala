@@ -16,7 +16,7 @@ object parser:
     headingMinLevel: Int,
     headingMaxLevel: Int,
     commaSeparatedNodeProperties: Set[String],
-    aliasNodeProperty: String,
+    aliasNodeProperty: String
   )
 
   object Context:
@@ -78,17 +78,27 @@ class parser(ctx: Context = Context.defaultCtx):
     headingMinLevel: Int,
     headingMaxLevel: Int,
     minIndentation: Int,
-    listMinLevel: Int,
+    listMinLevel: Int
   ): P[HeadedSection] =
     if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel)
       fail[HeadedSection]
     else
-      (indentation(min = minIndentation) ~ heading(headingMinLevel, headingMaxLevel) ~ blockElement(listMinLevel = listMinLevel, headingMinLevel = headingMinLevel + 1, headingMaxLevel = headingMaxLevel, minIndentation = minIndentation).*)
-        .map { case (indentation, heading, content) => HeadedSection(heading, content, indentation) }
+      &(indentation(min = minIndentation) ~ heading(headingMinLevel, headingMaxLevel)).flatMap {
+        case (ind, h) =>
+          (
+            indentation(min = minIndentation)
+            ~ heading(headingMinLevel, headingMaxLevel)
+            ~ blockElement(
+              listMinLevel = listMinLevel,
+              headingMinLevel = h.headerLevel + 1,
+              headingMaxLevel = headingMaxLevel,
+              minIndentation = minIndentation
+            ).*
+          ).map { case (ind, heading, content) => HeadedSection(heading, content, ind) }
+      }
 
   private def heading(headingMinLevel: Int, headingMaxLevel: Int): P[Heading] =
-    if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel)
-      fail[Heading]
+    if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel) fail[Heading]
     else
       def headerLevel: P[Int] =
         (P("#").rep(min = headingMinLevel, max = headingMaxLevel) ~ !P("#")).!.map(_.length)
@@ -144,41 +154,41 @@ class parser(ctx: Context = Context.defaultCtx):
       fail[MarkdownList]
     else
       &(indentation(min = listMinLevel) ~ listMarker ~ s1).flatMap {
-        case (ind, marker: String) => 
-          (indentation(min = listMinLevel).!! 
-           ~ listMarker.!! 
-           ~ s1
-           ~ (
-              blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).? 
-            ~ blockElement(minIndentation = ind.level + 1, listMinLevel = listMinLevel + 1).rep(min = 0)
-           )
-            .map { 
-              case (Some(first), next) => MarkdownList.Item(first :: next) 
-              case (None, next) => MarkdownList.Item(next) 
-            })
+        case (ind, marker: String) =>
+          (indentation(min = listMinLevel).!!
+          ~ listMarker.!!
+          ~ s1
+          ~ (
+            blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).?
+            ~ blockElement(minIndentation = ind.level + 1, listMinLevel = listMinLevel + 1)
+              .rep(min = 0)
+          ).map {
+            case (Some(first), next) => MarkdownList.Item(first :: next)
+            case (None, next)        => MarkdownList.Item(next)
+          })
             .rep(min = 1)
             .map { items => MarkdownList.Unordered(items, ind) }
         case _ => ???
       }
-      // &(indentation(min = minIndentation) ~ listMarker).flatMap {
-      //   case (ind, marker: String =>
-      //     (indentation(min = minIndentation)
-      //     ~ P(marker)
-      //     ~ s0
-      //     ~ blockElement(minIndentation = minIndentation + 1, listMinLevel = listMinLevel + 1).rep(min = 0)
-      //       .map(items => MarkdownList.Item(items))
-      //       .rep(min = 1))
-      //       .map { case (ind, items) => MarkdownList.Unordered(items, ind) }
-      //   case marker: Int =>
-      //     ???
-          // (indentation(min = minIndentation)
-          // ~ orderedListMarker.!!
-          // ~ s0
-          // ~ (blockElement(minIndentation = minIndentation + 1, listMinLevel = listMinLevel + 1).rep(min = 0))
-          //   .map(items => MarkdownList.Item(items))
-          //   .rep(min = 1))
-          //   .map { case (ind, items) => MarkdownList.Ordered(items, ind) }
-      // }
+  // &(indentation(min = minIndentation) ~ listMarker).flatMap {
+  //   case (ind, marker: String =>
+  //     (indentation(min = minIndentation)
+  //     ~ P(marker)
+  //     ~ s0
+  //     ~ blockElement(minIndentation = minIndentation + 1, listMinLevel = listMinLevel + 1).rep(min = 0)
+  //       .map(items => MarkdownList.Item(items))
+  //       .rep(min = 1))
+  //       .map { case (ind, items) => MarkdownList.Unordered(items, ind) }
+  //   case marker: Int =>
+  //     ???
+  // (indentation(min = minIndentation)
+  // ~ orderedListMarker.!!
+  // ~ s0
+  // ~ (blockElement(minIndentation = minIndentation + 1, listMinLevel = listMinLevel + 1).rep(min = 0))
+  //   .map(items => MarkdownList.Item(items))
+  //   .rep(min = 1))
+  //   .map { case (ind, items) => MarkdownList.Ordered(items, ind) }
+  // }
 
   // TODO: Make !_conditions better
   private def paragraph(minIndentation: Int): P[Paragraph] =
@@ -201,7 +211,7 @@ class parser(ctx: Context = Context.defaultCtx):
     headingMinLevel: Int = 1,
     headingMaxLevel: Int = 6,
     listMinLevel: Int = 0,
-    listMaxLevel: Int = ctx.listMaxLevel,
+    listMaxLevel: Int = ctx.listMaxLevel
   ): P[BlockElement] =
     if (minIndentation > 16) fail[BlockElement]
     else
@@ -210,7 +220,7 @@ class parser(ctx: Context = Context.defaultCtx):
         headedSection(headingMinLevel, headingMaxLevel, minIndentation, listMinLevel),
         codeBlock,
         paragraph(minIndentation),
-        table,
+        table
       )
 
   private def link: P[Link] =
@@ -219,8 +229,8 @@ class parser(ctx: Context = Context.defaultCtx):
     def tag: P[TagInternalLink] =
       (
         P("#") ~ !s1 ~ alphaNum.+.!
-          | P("#[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map {
-            case (first, next) => first + next
+          | P("#[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map { case (first, next) =>
+            first + next
           } ~ P("]]")
       )
         .map(Location.Internal.Page.apply)
@@ -228,15 +238,15 @@ class parser(ctx: Context = Context.defaultCtx):
 
     def page: P[Location.Internal.Page] =
       (
-        P("[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map {
-          case (first, next) => first + next
+        P("[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map { case (first, next) =>
+          first + next
         } ~ P("]]")
       ).map(Location.Internal.Page.apply)
 
     def block: P[Location.Internal.Block] =
       (
-        P("((") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map {
-          case (first, next) => first + next
+        P("((") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map { case (first, next) =>
+          first + next
         } ~ P("))")
       ).map(Location.Internal.Block.apply)
 
@@ -368,8 +378,7 @@ class parser(ctx: Context = Context.defaultCtx):
     def diary: P[Diary] =
       (P("<%%(") ~ charsUntilIn("\n>") ~ P(")>")).map(Diary.apply)
 
-    def repeaterMark
-      : P[(RepeaterOrDelay.Value, RepeaterOrDelay.Unit) => RepeaterOrDelay] =
+    def repeaterMark: P[(RepeaterOrDelay.Value, RepeaterOrDelay.Unit) => RepeaterOrDelay] =
       (
         P("++").map(_ => RepeaterOrDelay.CatchUpRepeater.apply)
         | P("+").map(_ => RepeaterOrDelay.CumulateRepeater.apply)
@@ -398,8 +407,8 @@ class parser(ctx: Context = Context.defaultCtx):
         .map(_.get)
 
     def repeaterOrDelay: P[RepeaterOrDelay] =
-      (repeaterMark ~ repeatervalue ~ repeaterUnit).map {
-        case (factory, value, unit) => factory(value, unit)
+      (repeaterMark ~ repeatervalue ~ repeaterUnit).map { case (factory, value, unit) =>
+        factory(value, unit)
       }
 
     def activeTimestamp: P[ActiveTimestamp] =
@@ -420,9 +429,8 @@ class parser(ctx: Context = Context.defaultCtx):
       (
         (activeTimestamp ~ P("-")
           .rep(min = 1, max = 3)
-          .!! ~ activeTimestamp).map {
-          case (from: ActiveTimestamp, to: ActiveTimestamp) =>
-            ActiveTimestampRange(from, to)
+          .!! ~ activeTimestamp).map { case (from: ActiveTimestamp, to: ActiveTimestamp) =>
+          ActiveTimestampRange(from, to)
         }
         | P(
           P(
@@ -442,9 +450,8 @@ class parser(ctx: Context = Context.defaultCtx):
       (
         (inactiveTimestamp ~ P("-")
           .rep(min = 1, max = 3)
-          .!! ~ inactiveTimestamp).map {
-          case (from: InactiveTimestamp, to: InactiveTimestamp) =>
-            InactiveTimestampRange(from, to)
+          .!! ~ inactiveTimestamp).map { case (from: InactiveTimestamp, to: InactiveTimestamp) =>
+          InactiveTimestampRange(from, to)
         }
         |
         (P(

@@ -377,83 +377,125 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
 |- ### list heading 3
 |""".trim().stripMargin
 
-    def document = LogseqMarkdown(List(heading1))
-
-    def heading1 = HeadedSection(
-      Heading(Some(InlineContainer(List(Text("Heading 1")))), 1),
-      List(MarkdownList.Unordered(List(
-        heading1ListItem1, heading1ListItem2)), heading1heading21, heading1heading22
-      )
-    ) 
-    def heading1ListItem1ListItem11 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 1.1"))))))
-    def heading1ListItem1ListItem12 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 1.2"))))))
-    def heading1ListItem1 = MarkdownList.Item(
-      List(
-        Paragraph(InlineContainer(List(Text("list item 1")))),
-        MarkdownList.Unordered(
-          indentation = Indentation(1, "  "),
-          items = List(heading1ListItem1ListItem11, heading1ListItem1ListItem12)
+    checkParser(
+      parser.document,
+      toParse,
+      LogseqMarkdown(
+        List(
+          HeadedSection(
+            Heading(Some(InlineContainer(List(Text("Heading 1")))), 1),
+            List(
+              MarkdownList.Unordered(
+                List(
+                  MarkdownList.Item(
+                    List(
+                      Paragraph(InlineContainer(List(Text("list item 1")))),
+                      MarkdownList.Unordered(
+                        indentation = Indentation(1, "  "),
+                        items = List(
+                          MarkdownList.Item(
+                            List(Paragraph(InlineContainer(List(Text("list item 1.1")))))
+                          ),
+                          MarkdownList.Item(
+                            List(Paragraph(InlineContainer(List(Text("list item 1.2")))))
+                          )
+                        )
+                      )
+                    )
+                  ),
+                  MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 2"))))))
+                )
+              ),
+              HeadedSection(
+                Heading(Some(InlineContainer(List(Text("Heading 2.1")))), 2),
+                List(
+                  MarkdownList.Unordered(
+                    List(
+                      MarkdownList.Item(
+                        List(Paragraph(InlineContainer(List(Text("list item 1")))))
+                      ),
+                      MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 2"))))))
+                    )
+                  )
+                )
+              ),
+              HeadedSection(
+                Heading(Some(InlineContainer(List(Text("Heading 2.2")))), 2),
+                List(
+                  MarkdownList.Unordered(
+                    List(
+                      MarkdownList.Item(
+                        List(
+                          HeadedSection(
+                            Heading(Some(InlineContainer(List(Text("list heading 1")))), 1),
+                            List()
+                          )
+                        )
+                      ),
+                      MarkdownList.Item(
+                        List(
+                          HeadedSection(
+                            Heading(Some(InlineContainer(List(Text("list heading 2")))), 2),
+                            List(
+                              HeadedSection(
+                                Heading(Some(InlineContainer(List(Text("list heading 2.1")))), 3),
+                                List(
+                                  MarkdownList.Unordered(
+                                    List(
+                                      MarkdownList.Item(
+                                        List(
+                                          Paragraph(InlineContainer(List(Text("list item 2.1.1"))))
+                                        )
+                                      ),
+                                      MarkdownList.Item(
+                                        List(
+                                          Paragraph(InlineContainer(List(Text("list item 2.1.2"))))
+                                        )
+                                      )
+                                    ),
+                                    indentation = Indentation(1, "  ")
+                                  )
+                                ),
+                                indentation = Indentation(1, "  ")
+                              ),
+                              HeadedSection(
+                                Heading(Some(InlineContainer(List(Text("list heading 2.2")))), 3),
+                                List(
+                                  MarkdownList.Unordered(
+                                    List(
+                                      MarkdownList.Item(
+                                        List(
+                                          Paragraph(InlineContainer(List(Text("list item 2.2.1"))))
+                                        )
+                                      )
+                                    ),
+                                    indentation = Indentation(1, "  ")
+                                  )
+                                ),
+                                indentation = Indentation(1, "  ")
+                              )
+                            ),
+                            indentation = Indentation(0, "")
+                          )
+                        )
+                      ),
+                      MarkdownList.Item(
+                        List(
+                          HeadedSection(
+                            Heading(Some(InlineContainer(List(Text("list heading 3")))), 3),
+                            List()
+                          )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
         )
       )
     )
-    def heading1ListItem2 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 2"))))))
-    def heading1heading21ListItem1 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 1"))))))
-    def heading1heading21ListItem2 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 2"))))))
-    def heading1heading21 = HeadedSection(
-      Heading(Some(InlineContainer(List(Text("Heading 2.1")))), 2),
-      List(MarkdownList.Unordered(List(heading1heading21ListItem1, heading1heading21ListItem2)))
-    )
-    def heading1heading22 = HeadedSection(
-      Heading(Some(InlineContainer(List(Text("Heading 2.2")))), 2),
-      List(MarkdownList.Unordered(List(heading1heading22listheading1, heading1heading22listheading2, heading1heading22listheading3)))
-    )
-    def heading1heading22listheading1 = MarkdownList.Item(List(HeadedSection(Heading(Some(InlineContainer(List(Text("list heading 1")))), 1), List())))
-    def heading1heading22listheading2 = MarkdownList.Item(List(HeadedSection(
-      Heading(Some(InlineContainer(List(Text("list heading 2")))), 2), 
-      List(heading1heading22listheading2listheading21, heading1heading22listheading2listheading22), indentation = Indentation(1, "  "))))
-    def heading1heading22listheading2listheading21 = HeadedSection(
-      Heading(Some(InlineContainer(List(Text("list heading 2.1")))), 3),
-      List(MarkdownList.Unordered(List(heading1heading22listheading2listheading21listitem211, heading1heading22listheading2listheading21listitem212), 
-      indentation = Indentation(1, "  ")
-      )),
-      // indentation = Indentation(1, "  ")
-    )
-    def heading1heading22listheading2listheading21listitem211 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 2.1.1"))))))
-    def heading1heading22listheading2listheading21listitem212 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 2.1.2"))))))
-    def heading1heading22listheading2listheading22 = HeadedSection(Heading(Some(InlineContainer(List(Text("list heading 2.2")))), 3), List(
-      MarkdownList.Unordered(List(heading1heading22listheading2listheading22listitem221), indentation = Indentation(1, "  "))
-    ), indentation = Indentation(1, "  "))
-    def heading1heading22listheading2listheading22listitem221 = MarkdownList.Item(List(Paragraph(InlineContainer(List(Text("list item 2.2.1")))))
-    )
-    def heading1heading22listheading3 = MarkdownList.Item(List(HeadedSection(Heading(Some(InlineContainer(List(Text("list heading 3")))), 3), List())))
-
-    parse(toParse, parser.document) match {
-      case POut.Success(value, _, _, _) =>
-        // pprint.pprintln(value)
-        value match {
-          case LogseqMarkdown(HeadedSection(_, be1 :: be2 :: be3 :: Nil, _) :: Nil) =>
-            assertEquals(be1, MarkdownList.Unordered(List(heading1ListItem1, heading1ListItem2)))
-            assertEquals(be2, heading1heading21)
-            be3 match {
-              case HeadedSection(_, MarkdownList.Unordered(x1 :: x2 :: x3 :: Nil, _) :: Nil, indentation) => 
-                // assertEquals(x2, heading1heading22listheading1)
-                x2 match
-                  case MarkdownList.Item(HeadedSection(_, MarkdownList.Unordered(MarkdownList.Item(y1::Nil) :: MarkdownList.Item(y2::Nil) :: Nil, _) :: Nil, _) :: Nil) =>
-                    pprint.pprintln(y1)
-                    pprint.pprintln(heading1heading22listheading2listheading21)
-                    // assertEquals(y1, heading1heading22listheading2listheading21)
-                    // assertEquals(y2, heading1heading22listheading2listheading22)
-                  case _ => fail(s"$toParse not parsed: $x2")
-                // assertEquals(x2, heading1heading22listheading2)
-                // assertEquals(x3, heading1heading22listheading3)
-              case _ => fail(s"$toParse not parsed: $value")
-            }
-            // assertEquals(be3, heading1heading22)
-          case _ => fail(s"$toParse not parsed: $value")
-        }
-        // assertEquals(value, document)
-      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
-    }
   }
 
   lazy val ctx = Context.defaultCtx
