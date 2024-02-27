@@ -51,11 +51,11 @@ object ops:
 
   extension (text: Text) def ++ (that: Text): Text = Text(text.content ++ that.content)
 
-  // extension (marker: TextMarkup.Marker)
-  //   def isNestable: Boolean = marker match
-  //     case TextMarkup.Marker.Code     => false
-  //     case TextMarkup.Marker.Verbatim => false
-  //     case _                          => true
+  def listItem(content: String): MarkdownList.Item =
+    MarkdownList.Item(List(Paragraph(InlineContainer(List(Text(content))))))
+
+  def h(content: String, level: Int, propertyDrawer: Option[PropertyDrawer] = None): Heading =
+    Heading(Some(InlineContainer(List(Text(content)))), level, propertyDrawer = propertyDrawer)
 
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)

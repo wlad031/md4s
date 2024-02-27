@@ -54,10 +54,8 @@ import parser.*
 class parser(ctx: Context = Context.defaultCtx):
 
   def document: P[LogseqMarkdown] =
-    blockElement(minIndentation = 0)
-      .rep(1)
-      // .map(blocks => collapseHeadedSections(ctx)(blocks))
-      .map(blocks => LogseqMarkdown(blocks))
+    (propertyDrawer.? ~ blockElement(minIndentation = 0).rep(1))
+      .map { case (properties, blocks) => LogseqMarkdown(blocks, properties) }
 
   def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =
     ((P("  ")).rep(min = min, max = max).! ~ !(P("\t") | P(" ")))
@@ -132,7 +130,7 @@ class parser(ctx: Context = Context.defaultCtx):
         nodePropertyName
           ~ P("::")
           ~ s0
-          ~ nodePropertyValue.?
+          ~ nodePropertyValue.? // TODO: Why I can't place (~ s0 ~ eolOrEnd) here?
       ).map { case (name: String, value: Option[InlineContainer]) =>
         PropertyDrawer.Node(name, value)
       }

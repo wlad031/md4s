@@ -12,7 +12,7 @@ object models:
     * example, a document might contain a list of block elements where each element corresponds to
     * items such paragraphs, code blocks, and so on.
     */
-  case class LogseqMarkdown(blocks: List[BlockElement]) extends MarkdownDocument derives ReadWriter
+  case class LogseqMarkdown(blocks: List[BlockElement], propertyDrawer: Option[PropertyDrawer] = None) extends MarkdownDocument derives ReadWriter
 
   sealed trait BlockElement extends MarkdownDocument derives ReadWriter
 
