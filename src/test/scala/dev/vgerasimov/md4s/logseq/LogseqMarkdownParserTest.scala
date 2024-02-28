@@ -6,6 +6,8 @@ import models.*
 import ops.{ *, given }
 import parser.*
 import dev.vgerasimov.md4s.logseq.models.MarkdownList.Unordered
+import dev.vgerasimov.md4s.logseq.raw.toRaw
+import dev.vgerasimov.md4s.models.MarkdownDocument
 
 class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
 
@@ -524,11 +526,17 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
 
   def parse[T](toParse: String, parser: P[T]): POut[T] = parser(toParse)
 
-  def checkParser[T](parser: P[T], toParse: String, expected: => T): Unit =
+  def checkParser[T](
+    parser: P[LogseqMarkdown],
+    toParse: String,
+    expected: => LogseqMarkdown
+  ): Unit =
     parse(toParse, parser) match {
       case POut.Success(value, _, _, _) =>
         // pprint.pprintln(value)
         assertEquals(value, expected)
+        val raw = toRaw(value)
+        assertEquals(raw, toParse)
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
     }
 

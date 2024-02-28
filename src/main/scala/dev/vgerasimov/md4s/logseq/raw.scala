@@ -41,8 +41,9 @@ object raw:
     inlineElement match
       case InlineContainer(elements) => elements.map(toRaw).mkString
       case Text(content) => content
-      case Emphasis(marker : Marker.Bold, contents) => s"${marker.value}${toRaw(contents)}${marker.value}"
-      case Emphasis(marker : Marker.Code, contents) => s"${marker.value}${toRaw(contents)}${marker.value}"
+      case Emphasis(Marker.Bold(marker), contents) => s"${marker}${toRaw(contents)}${marker}"
+      case Emphasis(Marker.Italic(marker), contents) => s"${marker}${toRaw(contents)}${marker}"
+      case Emphasis(Marker.Code(marker), contents) => s"${marker}${toRaw(contents)}${marker}"
       case ClassicInternalLink(Link.Location.Internal.Page(value), text) => s"[[${value}]]"
       case ExternalLink(Link.Location.External(value), Some(Text(text))) => s"[$text]($value)"
       case TagInternalLink(location) => s"#${location.value}"
