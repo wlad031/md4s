@@ -26,13 +26,15 @@ object raw:
   def toRaw(blockElement: BlockElement): String =
     blockElement match
       case HeadedSection(heading, content, _) => s"${toRaw(heading)}\n${toRaw(content)}"
-      case Heading(Some(content), headerLevel, status, priority, propertyDrawer, _) => s"${"#"*headerLevel} ${toRaw(content)}"
+      case Heading(Some(content), headerLevel, status, priority, propertyDrawer, indentation) => s"${toRaw(indentation)}${"#"*headerLevel}${toRaw(content)}"
       case Paragraph(content, propertyDrawer, _) => s"${toRaw(content)}\n"
       case dev.vgerasimov.md4s.logseq.models.MarkdownList.Ordered(items, _) => items.map(toRaw).mkString
       case Unordered(items, _) => items.map(toRaw).mkString
       // case HorizontalRuler() =>
       // case Table(rows) =>
       case x => x.toString()
+
+  def toRaw(indentation: Indentation): String = indentation.value
 
   def toRaw(item: MarkdownList.Item): String =
     item.content.map(toRaw).mkString

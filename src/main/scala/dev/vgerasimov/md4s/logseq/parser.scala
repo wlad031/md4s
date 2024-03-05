@@ -46,20 +46,33 @@ object parser:
       aliasNodeProperty = default.aliasNodeProperty
     )
 
+  end Context
+
   private enum ListType:
     case Unordered, Ordered
+
+  private case class IntentationSymbol(value: String)
 
 import parser.*
 
 class parser(ctx: Context = Context.defaultCtx):
 
   def document: P[LogseqMarkdown] =
-    (propertyDrawer.? ~ blockElement(minIndentation = 0).rep(1))
-      .map { case (properties, blocks) => LogseqMarkdown(blocks, properties) }
+    (propertyDrawer.? ~ blockElement(minIndentation = 0).rep(1)).map { case (properties, blocks) =>
+      LogseqMarkdown(blocks, properties)
+    }
 
-  def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =
-    ((P("  ")).rep(min = min, max = max).! ~ !(P("\t") | P(" ")))
-      .map(v => Indentation(v.replace("  ", " ").length, v))
+  // TODO: Extract to slowparse library
+  def tab: P[Unit] = P('\t')
+  def space: P[Unit] = P(' ')
+
+  private def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =
+    (
+      (tab | (space ~ space)).!.map(IntentationSymbol.apply)
+        .rep(min = min, max = max)
+        ~ !(tab | space)
+    )
+      .map(v => Indentation(v.size, v.map(_.value).mkString))
 
   private def inlineContainerWithoutEmphasis: P[InlineContainer] =
     (choice(timestamp, link, (!eol ~ singleCharText)).+).map(_.toList)
