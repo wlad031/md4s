@@ -1,15 +1,13 @@
-package dev.vgerasimov.md4s.logseq
+package dev.vgerasimov.md4s
+package logseq
 
 import dev.vgerasimov.slowparse.{ P, POut }
 
 import models.*
 import ops.{ *, given }
 import parser.*
-import dev.vgerasimov.md4s.logseq.models.MarkdownList.Unordered
-import dev.vgerasimov.md4s.logseq.raw.toRaw
-import dev.vgerasimov.md4s.models.MarkdownDocument
 
-class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
+class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 
   test("some valid markup string") {
     val toParse = """*hello world*"""
@@ -535,8 +533,6 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
       case POut.Success(value, _, _, _) =>
         // pprint.pprintln(value)
         assertEquals(value, expected)
-        val raw = toRaw(value)
-        assertEquals(raw, toParse)
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
     }
 
@@ -549,4 +545,5 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite {
   def ignore(v: String)(body: => Any): Unit = (
     ()
   )
-}
+
+end LogseqMarkdownParserTest

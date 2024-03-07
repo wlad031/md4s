@@ -9,12 +9,12 @@ import dev.vgerasimov.md4s.logseq.models.*
 import scala.jdk.CollectionConverters.{ *, given }
 
 val pprint2 =
-    pprint.copy(
-      // additionalHandlers = {
-      //   // case logseq.models.Text(s) :: Nil => pprint.Tree.Literal(s)
-      //   // case logseq.models.Text(s)        => pprint.Tree.Literal(s)
-      // }
-    )
+  pprint.copy(
+    // additionalHandlers = {
+    //   // case logseq.models.Text(s) :: Nil => pprint.Tree.Literal(s)
+    //   // case logseq.models.Text(s)        => pprint.Tree.Literal(s)
+    // }
+  )
 val parser = logseq.parser().document
 
 @main def run = parseAllLogseq
@@ -22,9 +22,9 @@ val parser = logseq.parser().document
 def parseAndPrint(text: String) =
   parser(text) match
     case Success(value, parsed, remaining, parserLabel) => None
-      // println(write(value))
-      // pprint2.pprintln(value)
-      // println(logseq.raw.toRaw(value))
+    // println(write(value))
+    // pprint2.pprintln(value)
+    // println(logseq.raw.toRaw(value))
     case Failure(message, parserLabel) =>
       println(text)
       println(s"Failed to parse: $message")
@@ -65,9 +65,13 @@ def runSingleParsing =
 
 def parseAllLogseq =
   val currentTime = System.currentTimeMillis()
-  Files.walk(Paths.get("/Users/vgerasimov/Logseq/pages")).iterator().asScala.filter(Files.isRegularFile(_))
-  .map(f => scala.io.Source.fromFile(f.toFile).mkString)
-  .foreach(f => {
-    parseAndPrint(f)
-  })
+  Files
+    .walk(Paths.get("/Users/vgerasimov/Logseq/pages"))
+    .iterator()
+    .asScala
+    .filter(Files.isRegularFile(_))
+    .map(f => scala.io.Source.fromFile(f.toFile).mkString)
+    .foreach(f => {
+      parseAndPrint(f)
+    })
   println(s"Time: ${System.currentTimeMillis() - currentTime}ms")

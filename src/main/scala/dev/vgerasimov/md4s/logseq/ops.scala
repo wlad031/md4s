@@ -59,4 +59,3 @@ object ops:
 
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
-

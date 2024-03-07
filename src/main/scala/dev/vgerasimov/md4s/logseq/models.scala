@@ -12,7 +12,11 @@ object models:
     * example, a document might contain a list of block elements where each element corresponds to
     * items such paragraphs, code blocks, and so on.
     */
-  case class LogseqMarkdown(blocks: List[BlockElement], propertyDrawer: Option[PropertyDrawer] = None) extends MarkdownDocument derives ReadWriter
+  case class LogseqMarkdown(
+    blocks: List[BlockElement],
+    propertyDrawer: Option[PropertyDrawer] = None
+  ) extends MarkdownDocument
+      derives ReadWriter
 
   sealed trait BlockElement extends MarkdownDocument derives ReadWriter
 
@@ -94,13 +98,14 @@ object models:
   ) extends InlineElement
       derives ReadWriter
   object Emphasis:
-    sealed trait Marker derives ReadWriter
+    sealed trait Marker derives ReadWriter:
+      def value: String
     object Marker:
-      case class Bold(value: String) extends Marker derives ReadWriter
-      case class Italic(value: String) extends Marker derives ReadWriter
-      case class StrikeThrough(value: String) extends Marker derives ReadWriter
-      case class Code(value: String) extends Marker derives ReadWriter
-      case class Highlight(value: String) extends Marker derives ReadWriter
+      case class Bold(override val value: String) extends Marker derives ReadWriter
+      case class Italic(override val value: String) extends Marker derives ReadWriter
+      case class StrikeThrough(override val value: String) extends Marker derives ReadWriter
+      case class Code(override val value: String) extends Marker derives ReadWriter
+      case class Highlight(override val value: String) extends Marker derives ReadWriter
 
   sealed trait Link extends InlineElement derives ReadWriter
   object Link:
