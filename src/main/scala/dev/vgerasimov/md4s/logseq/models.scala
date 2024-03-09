@@ -20,11 +20,18 @@ object models:
 
   sealed trait BlockElement extends MarkdownDocument derives ReadWriter
 
+  case class Spacing(value: String) derives ReadWriter
+
   case class Status(value: String) derives ReadWriter
   case class Priority(value: Char) derives ReadWriter
   case class PropertyDrawer(nodes: List[PropertyDrawer.Node]) derives ReadWriter
   object PropertyDrawer:
-    case class Node(name: String, value: Option[InlineContainer] = None) derives ReadWriter
+    case class Node(
+      name: String,
+      value: Option[InlineContainer] = None,
+      spacingBeforeName: Option[Spacing] = None,
+      spacingBeforeValue: Option[Spacing] = Some(Spacing(" "))
+    ) derives ReadWriter
   case class Indentation(level: Int, value: String) derives ReadWriter
   object Indentation:
     val zero: Indentation = Indentation(0, "")
@@ -66,7 +73,11 @@ object models:
         extends MarkdownList derives ReadWriter
     case class Unordered(items: List[Item], indentation: Indentation = Indentation.zero)
         extends MarkdownList derives ReadWriter
-    case class Item(content: List[BlockElement]) derives ReadWriter
+    case class Item(
+      content: List[BlockElement],
+      marker: String,
+      spacingAfterMarker: Option[Spacing] = Some(Spacing(" "))
+    ) derives ReadWriter
 
   case class Blockquote(content: List[BlockElement]) extends BlockElement derives ReadWriter
 

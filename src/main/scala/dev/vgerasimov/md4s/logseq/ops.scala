@@ -51,8 +51,12 @@ object ops:
 
   extension (text: Text) def ++ (that: Text): Text = Text(text.content ++ that.content)
 
-  def listItem(content: String): MarkdownList.Item =
-    MarkdownList.Item(List(Paragraph(InlineContainer(List(Text(content))))))
+  def listItem(content: String, marker: String): MarkdownList.Item =
+    MarkdownList.Item(
+      List(Paragraph(InlineContainer(List(Text(content))))),
+      marker,
+      spacingAfterMarker = Some(Spacing(" "))
+    )
 
   def h(content: String, level: Int, propertyDrawer: Option[PropertyDrawer] = None): Heading =
     Heading(Some(InlineContainer(List(Text(content)))), level, propertyDrawer = propertyDrawer)

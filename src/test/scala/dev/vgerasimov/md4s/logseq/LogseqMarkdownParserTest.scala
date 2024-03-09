@@ -161,7 +161,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
         List(
           MarkdownList.Unordered(
             List(
-              listItem("list item 1")
+              listItem("list item 1", "-")
             )
           )
         )
@@ -188,11 +188,12 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   MarkdownList.Unordered(
                     indentation = Indentation(1, "  "),
                     items = List(
-                      listItem("list item 1.1"),
-                      listItem("list item 1.2")
+                      listItem("list item 1.1", "-"),
+                      listItem("list item 1.2", "-")
                     )
                   )
-                )
+                ),
+                marker = "-"
               )
             )
           )
@@ -223,12 +224,14 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               MarkdownList.Item(
                 List(
                   HeadedSection(h("Heading 1", 1), List())
-                )
+                ),
+                marker = "-"
               ),
               MarkdownList.Item(
                 List(
                   HeadedSection(h("Heading 2", 1), List())
-                )
+                ),
+                marker = "-"
               ),
               MarkdownList.Item(
                 List(
@@ -240,7 +243,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                     ),
                     List()
                   )
-                )
+                ),
+                marker = "-"
               ),
               MarkdownList.Item(
                 List(
@@ -253,7 +257,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                     ),
                     List()
                   )
-                )
+                ),
+                marker = "-"
               ),
               MarkdownList.Item(
                 List(
@@ -265,15 +270,26 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                       propertyDrawer = Some(
                         PropertyDrawer(
                           List(
-                            PropertyDrawer.Node("k1", Some(InlineContainer(List(Text("v1"))))),
-                            PropertyDrawer.Node("k2", Some(InlineContainer(List(Text("v2")))))
+                            PropertyDrawer.Node(
+                              "k1",
+                              Some(InlineContainer(List(Text("v1")))),
+                              spacingBeforeName = Some(Spacing("  ")),
+                              spacingBeforeValue = Some(Spacing(" "))
+                            ),
+                            PropertyDrawer.Node(
+                              "k2",
+                              Some(InlineContainer(List(Text("v2")))),
+                              spacingBeforeName = Some(Spacing("  ")),
+                              spacingBeforeValue = Some(Spacing(" "))
+                            )
                           )
                         )
                       )
                     ),
                     List()
                   )
-                )
+                ),
+                marker = "-"
               ),
               MarkdownList.Item(
                 List(
@@ -281,7 +297,9 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                     h("last heading", 1),
                     List(Paragraph(InlineContainer(List(Text("and some text, just because")))))
                   )
-                )
+                ),
+                marker = "-",
+                spacingAfterMarker = Some(Spacing(" "))
               )
             )
           )
@@ -309,7 +327,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
             List(
               MarkdownList.Unordered(
                 List(
-                  listItem("list item 1")
+                  listItem("list item 1", "+")
                 )
               ),
               HeadedSection(
@@ -317,8 +335,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 List(
                   MarkdownList.Unordered(
                     List(
-                      listItem("list item 1"),
-                      listItem("list item 2")
+                      listItem("list item 1", "-"),
+                      listItem("list item 2", "-")
                     )
                   )
                 )
@@ -371,13 +389,14 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                       MarkdownList.Unordered(
                         indentation = Indentation(1, "  "),
                         items = List(
-                          listItem("list item 1.1"),
-                          listItem("list item 1.2")
+                          listItem("list item 1.1", "-"),
+                          listItem("list item 1.2", "-")
                         )
                       )
-                    )
+                    ),
+                    marker = "+"
                   ),
-                  listItem("list item 2")
+                  listItem("list item 2", "+")
                 )
               ),
               HeadedSection(
@@ -385,8 +404,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 List(
                   MarkdownList.Unordered(
                     List(
-                      listItem("list item 1"),
-                      listItem("list item 2")
+                      listItem("list item 1", "-"),
+                      listItem("list item 2", "-")
                     )
                   )
                 )
@@ -402,7 +421,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                             h("list heading 1", 1),
                             List()
                           )
-                        )
+                        ),
+                        marker = "-"
                       ),
                       MarkdownList.Item(
                         List(
@@ -414,8 +434,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                                 List(
                                   MarkdownList.Unordered(
                                     List(
-                                      listItem("list item 2.1.1"),
-                                      listItem("list item 2.1.2")
+                                      listItem("list item 2.1.1", "-"),
+                                      listItem("list item 2.1.2", "-")
                                     ),
                                     indentation = Indentation(1, "  ")
                                   )
@@ -427,7 +447,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                                 List(
                                   MarkdownList.Unordered(
                                     List(
-                                      listItem("list item 2.2.1")
+                                      listItem("list item 2.2.1", "-")
                                     ),
                                     indentation = Indentation(1, "  ")
                                   )
@@ -437,7 +457,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                             ),
                             indentation = Indentation(0, "")
                           )
-                        )
+                        ),
+                        marker = "-"
                       ),
                       MarkdownList.Item(
                         List(
@@ -445,7 +466,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                             h("list heading 3", 3),
                             List()
                           )
-                        )
+                        ),
+                        marker = "-"
                       )
                     )
                   )

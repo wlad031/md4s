@@ -7,6 +7,7 @@ import java.nio.file.*
 import upickle.default.{ ReadWriter as RW, *, given }
 import dev.vgerasimov.md4s.logseq.models.*
 import scala.jdk.CollectionConverters.{ *, given }
+import dev.vgerasimov.md4s.logseq.models.Link.ClassicInternalLink
 
 val pprint2 =
   pprint.copy(
@@ -64,14 +65,40 @@ def runSingleParsing =
   parseAndPrint(toParse)
 
 def parseAllLogseq =
+  var times = List[(Path, Long)]()
   val currentTime = System.currentTimeMillis()
   Files
     .walk(Paths.get("/Users/vgerasimov/Logseq/pages"))
     .iterator()
     .asScala
     .filter(Files.isRegularFile(_))
-    .map(f => scala.io.Source.fromFile(f.toFile).mkString)
     .foreach(f => {
-      parseAndPrint(f)
+      val text = scala.io.Source.fromFile(f.toFile).mkString
+      val currentTime = System.currentTimeMillis()
+      val parsed = parser(text)
+      times = times :+ (f, System.currentTimeMillis() - currentTime)
+      parsed match
+        case Success(value, parsed, remaining, parserLabel) =>
+          if (value.propertyDrawer.isDefined)
+            if (
+              value.propertyDrawer.get.nodes.exists(n =>
+                n.name == "type" && n.value.isDefined && n.value.get.elements.head
+                  .isInstanceOf[ClassicInternalLink] && n.value.get.elements.head
+                  .asInstanceOf[ClassicInternalLink]
+                  .location
+                  .isInstanceOf[Link.Location.Internal.Page]
+                && n.value.get.elements.head
+                  .asInstanceOf[ClassicInternalLink]
+                  .location
+                  .asInstanceOf[Link.Location.Internal.Page]
+                  .value == "Media/Movie"
+              )
+            )
+              println(f)
+        case Failure(message, parserLabel) => None
+      // println(text)
+      // println(s"Failed to parse: $message")
     })
+  println(s"Average time: ${times.map(_._2).sum / times.length}ms")
+  println(s"Max time: ${times.max(ord = (l, r) => l._2.compare(r._2))}ms")
   println(s"Time: ${System.currentTimeMillis() - currentTime}ms")

@@ -3,7 +3,6 @@ package logseq
 
 import models.*
 import ops.{ *, given }
-import parser.*
 
 class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
 
@@ -154,6 +153,30 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
     )
     val expected = "  # Hello, world!\n  Hello, world!"
     assertEquals(formatter.format(toFormat), expected)
+  }
+
+  import dev.vgerasimov.md4s.logseq.parser.*
+  import dev.vgerasimov.slowparse.{ P, POut }
+
+  lazy val ctx = Context.defaultCtx
+  lazy val parser = new parser(ctx)
+
+  test("Text -> Parsing -> Formatting [1]") {
+    val toParse = """
+|  type:: [[Media/Movie]]
+|  alias:: Thor: Ragnarok
+|  status:: [[DONE]]
+|  rating:: 3
+|  done-date:: [[2017-11-09]],[[2024-03-08]]
+|-
+|- # Cast
+""".trim().stripMargin
+    parser.document(toParse) match
+      case POut.Success(toFormat, _, _, _) =>
+        val formatted = formatter.format(toFormat)
+        println(formatted.replace(" ", "X"))
+        assertEquals(formatted, toParse)
+      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
   }
 
 end LogseqMarkdownFormatterTest
