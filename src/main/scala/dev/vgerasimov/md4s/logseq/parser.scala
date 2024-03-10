@@ -57,13 +57,10 @@ import parser.*
 
 class parser(ctx: Context = Context.defaultCtx):
 
-  def document: P[LogseqMarkdown] =
-    (propertyDrawer.? ~ blockElement(minIndentation = 0).*).map { case (properties, blocks) =>
-      LogseqMarkdown(blocks, properties)
-    } ~ end
+  def document: P[LogseqMarkdown] = evalAndLazyThen(delayedDocument)
 
-  def delayedDocument: ContinuableP[Option[PropertyDrawer], LogseqMarkdown] =
-    mapContinuable(andThenDelayed(propertyDrawer.?, blockElement(minIndentation = 0).*))({
+  def delayedDocument: AndLazyThen[Option[PropertyDrawer], LogseqMarkdown] =
+    mapAndLazyThen(andLazyThen(propertyDrawer.?, (blockElement(minIndentation = 0).* ~ end)))({
       case (properties, blocks) => LogseqMarkdown(blocks, properties)
     })
     
