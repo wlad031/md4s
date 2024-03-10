@@ -62,6 +62,11 @@ class parser(ctx: Context = Context.defaultCtx):
       LogseqMarkdown(blocks, properties)
     } ~ end
 
+  def delayedDocument: ContinuableP[Option[PropertyDrawer], LogseqMarkdown] =
+    mapContinuable(andThenDelayed(propertyDrawer.?, blockElement(minIndentation = 0).*))({
+      case (properties, blocks) => LogseqMarkdown(blocks, properties)
+    })
+    
   def spacing: P[Spacing] = (tab | space).+.!.map(Spacing.apply)
 
   private def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =

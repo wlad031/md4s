@@ -16,7 +16,7 @@ val pprint2 =
     //   // case logseq.models.Text(s)        => pprint.Tree.Literal(s)
     // }
   )
-val parser = logseq.parser().document
+val parser = logseq.parser().delayedDocument
 
 @main def run = parseAllLogseq
 
@@ -67,6 +67,7 @@ def runSingleParsing =
 def parseAllLogseq =
   var times = List[(Path, Long)]()
   val currentTime = System.currentTimeMillis()
+  var i = 0
   Files
     .walk(Paths.get("/Users/vgerasimov/Logseq/pages"))
     .iterator()
@@ -78,10 +79,10 @@ def parseAllLogseq =
       val parsed = parser(text)
       times = times :+ (f, System.currentTimeMillis() - currentTime)
       parsed match
-        case Success(value, parsed, remaining, parserLabel) =>
-          if (value.propertyDrawer.isDefined)
+        case Success((propertyDrawer, next), parsed, remaining, parserLabel) =>
+          if (propertyDrawer.isDefined)
             if (
-              value.propertyDrawer.get.nodes.exists(n =>
+              propertyDrawer.get.nodes.exists(n =>
                 n.name == "type" && n.value.isDefined && n.value.get.elements.head
                   .isInstanceOf[ClassicInternalLink] && n.value.get.elements.head
                   .asInstanceOf[ClassicInternalLink]
@@ -94,11 +95,18 @@ def parseAllLogseq =
                   .value == "Media/Movie"
               )
             )
+              next() match
+                case Success(value, parsed, remaining, parserLabel) => 
+                  i = i + 1
+                  None
+                  // pprint2.pprintln(value)
+                case Failure(message, parserLabel) => None
               println(f)
         case Failure(message, parserLabel) => None
       // println(text)
       // println(s"Failed to parse: $message")
     })
+  println(s"Found $i movies")
   println(s"Average time: ${times.map(_._2).sum / times.length}ms")
   println(s"Max time: ${times.max(ord = (l, r) => l._2.compare(r._2))}ms")
   println(s"Time: ${System.currentTimeMillis() - currentTime}ms")
