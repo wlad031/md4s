@@ -8,6 +8,7 @@ import upickle.default.{ ReadWriter as RW, *, given }
 import dev.vgerasimov.md4s.logseq.models.*
 import scala.jdk.CollectionConverters.{ *, given }
 import dev.vgerasimov.md4s.logseq.models.Link.ClassicInternalLink
+import dev.vgerasimov.md4s.logseq.formatter
 
 val pprint2 =
   pprint.copy(
@@ -79,32 +80,48 @@ def parseAllLogseq =
       val parsed = parser(text)
       times = times :+ (f, System.currentTimeMillis() - currentTime)
       parsed match
-        case Success((propertyDrawer, next), parsed, remaining, parserLabel) =>
-          if (propertyDrawer.isDefined)
-            if (
-              propertyDrawer.get.nodes.exists(n =>
-                n.name == "type" && n.value.isDefined && n.value.get.elements.head
-                  .isInstanceOf[ClassicInternalLink] && n.value.get.elements.head
-                  .asInstanceOf[ClassicInternalLink]
-                  .location
-                  .isInstanceOf[Link.Location.Internal.Page]
-                && n.value.get.elements.head
-                  .asInstanceOf[ClassicInternalLink]
-                  .location
-                  .asInstanceOf[Link.Location.Internal.Page]
-                  .value == "Media/Movie"
-              )
-            )
+        case Success((None, _), _, _, _) => None
+        case Success((Some(propertyDrawer), next), parsed, remaining, parserLabel) =>
+          if (propertyDrawer.nodes.exists(n =>
+              n.name == "type" && n.value.isDefined && n.value.get.elements.head
+                .isInstanceOf[ClassicInternalLink] && n.value.get.elements.head
+                .asInstanceOf[ClassicInternalLink]
+                .location
+                .isInstanceOf[Link.Location.Internal.Page]
+              && n.value.get.elements.head
+                .asInstanceOf[ClassicInternalLink]
+                .location
+                .asInstanceOf[Link.Location.Internal.Page]
+                .value == "Media/Movie"
+            ))
               next() match
-                case Success(value, parsed, remaining, parserLabel) => 
-                  i = i + 1
-                  None
-                  // pprint2.pprintln(value)
-                case Failure(message, parserLabel) => None
-              println(f)
-        case Failure(message, parserLabel) => None
-      // println(text)
-      // println(s"Failed to parse: $message")
+                case Success(LogseqMarkdown(_, None), _, _, _) => 
+                  println(s"[ERROR] Something went wrong: $f")
+                case Success(LogseqMarkdown(blocks, Some(propertyDrawer)), _, _, _) => 
+                  if (propertyDrawer.nodes.exists(n =>
+                      n.name == "gid" && n.value.isDefined)) {
+                        println(s"[INFO] Page already has gid: $f")
+                      } else {
+                        val gid = java.util.UUID.randomUUID().toString
+                        val newPropertyDrawer = PropertyDrawer(
+                          propertyDrawer.nodes :+ PropertyDrawer.Node(
+                            "gid",
+                            Some(InlineContainer(List(Text(gid))))
+                          )
+                        )
+                        val newDoc = LogseqMarkdown(blocks, Some(newPropertyDrawer))
+                        val newDocText = formatter.format(newDoc)
+                        val writer = new java.io.PrintWriter(f.toFile())
+                        writer.write(newDocText)
+                        writer.close()
+                        println(s"[INFO] Added gid to: $f")
+                      }
+                    i = i + 1
+                  val newDoc = LogseqMarkdown(blocks, Some(propertyDrawer))
+                case Failure(message, _) => 
+                  println(s"[ERROR] Failed to parse: $f")
+        case Failure(message, _) => 
+          println(s"[ERROR] Failed to parse: $f")
     })
   println(s"Found $i movies")
   println(s"Average time: ${times.map(_._2).sum / times.length}ms")

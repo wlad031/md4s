@@ -286,7 +286,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                         )
                       )
                     ),
-                    List()
+                    content = List()
                   )
                 ),
                 marker = "-"
@@ -527,6 +527,131 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
             List(
               PropertyDrawer.Node("k1", Some(InlineContainer(List(Text("v1"))))),
               PropertyDrawer.Node("k2", Some(InlineContainer(List(Text("v2")))))
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("Some more or less complex document is parsed correctly") {
+    val toParse = """
+|  type:: [[Media/Movie]]
+|  author:: [[Кристофер Нолан]]
+|  status:: [[DONE]]
+|  alias:: Oppenheimer
+|  rating:: 5
+|  done-date:: [[2023-07-29]]
+|- DONE [[Oppenheimer]] in [[Cinema City]]
+|  SCHEDULED: <2023-07-29 Sat 19:00>  
+|- # Cast
+|	- [[Киллиан Мерфи]]
+|	- [[Мэтт Дэймон]]
+|	- [[Роберт Дауни мл.]]
+|	- [[Эмили Блант]]
+|	- [[Рами Малек]]
+|	- [[Флоренс Пью]]
+|	- [[Гари Олдман]]
+|	- others
+""".trim().stripMargin
+    checkParser(
+      parser.document,
+      toParse,
+      LogseqMarkdown(
+        propertyDrawer = Some(
+          PropertyDrawer(
+            List(
+              PropertyDrawer.Node(
+                "type",
+                Some(InlineContainer(List(classicInternalLink("Media/Movie")))),
+                spacingBeforeName = Some(Spacing("  "))
+              ),
+              PropertyDrawer.Node(
+                "author",
+                Some(InlineContainer(List(classicInternalLink("Кристофер Нолан")))),
+                spacingBeforeName = Some(Spacing("  "))
+              ),
+              PropertyDrawer.Node(
+                "status",
+                Some(InlineContainer(List(classicInternalLink("DONE")))),
+                spacingBeforeName = Some(Spacing("  "))
+              ),
+              PropertyDrawer.Node(
+                "alias",
+                Some(InlineContainer(List(Text("Oppenheimer")))),
+                spacingBeforeName = Some(Spacing("  "))
+              ),
+              PropertyDrawer.Node(
+                "rating",
+                Some(InlineContainer(List(Text("5")))),
+                spacingBeforeName = Some(Spacing("  "))
+              ),
+              PropertyDrawer.Node(
+                "done-date",
+                Some(InlineContainer(List(classicInternalLink("2023-07-29")))),
+                spacingBeforeName = Some(Spacing("  "))
+              )
+            )
+          )
+        ),
+        blocks = List(
+          MarkdownList.Unordered(items =
+            List(
+              MarkdownList.Item(
+                marker = "-",
+                content = List(
+                  Paragraph(
+                    content = InlineContainer(
+                      List(
+                        classicInternalLink("Oppenheimer"),
+                        Text(" in "),
+                        classicInternalLink("Cinema City")
+                      )
+                    ),
+                    status = Some(Status("DONE")),
+                    planning = List(
+                      Planning.Scheduled(
+                        spacingBeforeKeyword = Some(Spacing("  ")),
+                        spacingBeforeTimestamp = Some(Spacing(" ")),
+                        spacingAfterTimestamp = Some(Spacing("  ")),
+                        timestamp = Timestamp.ActiveTimestamp(
+                          date = Timestamp.Date(
+                            Timestamp.Date.Year(2023),
+                            Timestamp.Date.Month(7),
+                            Timestamp.Date.Day(29),
+                            dayName = Some(Timestamp.Date.DayName.Saturday),
+                          ),
+                          time =
+                            Some(Timestamp.Time(Timestamp.Time.Hour(19), Timestamp.Time.Minute(0)))
+                        )
+                      )
+                    )
+                  )
+                )
+              ),
+              MarkdownList.Item(
+                marker = "-",
+                content = List(
+                  HeadedSection(
+                    heading = h("Cast", 1),
+                    content = List(
+                      MarkdownList.Unordered(
+                        List(
+                          listItem(classicInternalLink("Киллиан Мерфи"), "-"),
+                          listItem(classicInternalLink("Мэтт Дэймон"), "-"),
+                          listItem(classicInternalLink("Роберт Дауни мл."), "-"),
+                          listItem(classicInternalLink("Эмили Блант"), "-"),
+                          listItem(classicInternalLink("Рами Малек"), "-"),
+                          listItem(classicInternalLink("Флоренс Пью"), "-"),
+                          listItem(classicInternalLink("Гари Олдман"), "-"),
+                          listItem("others", "-")
+                        ),
+                        indentation = Indentation(1, "	")
+                      )
+                    )
+                  )
+                )
+              )
             )
           )
         )

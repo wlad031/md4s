@@ -51,15 +51,40 @@ object ops:
 
   extension (text: Text) def ++ (that: Text): Text = Text(text.content ++ that.content)
 
-  def listItem(content: String, marker: String): MarkdownList.Item =
+  def listItem(content: InlineElement, marker: String): MarkdownList.Item =
     MarkdownList.Item(
-      List(Paragraph(InlineContainer(List(Text(content))))),
+      List(Paragraph(InlineContainer(List(content)))),
       marker,
       spacingAfterMarker = Some(Spacing(" "))
     )
 
-  def h(content: String, level: Int, propertyDrawer: Option[PropertyDrawer] = None): Heading =
-    Heading(Some(InlineContainer(List(Text(content)))), level, propertyDrawer = propertyDrawer)
+  def listItem(content: String, marker: String): MarkdownList.Item = listItem(Text(content), marker)
+
+  def classicInternalLink(
+    page: String,
+    text: Option[String] = None
+  ): Link.ClassicInternalLink =
+    Link.ClassicInternalLink(Link.Location.Internal.Page(page), text.map(Text.apply))
+
+  def h(
+    content: String,
+    level: Int,
+    status: Option[String] = None,
+    propertyDrawer: Option[PropertyDrawer] = None
+  ): Heading = h(List(Text(content)), level, status, propertyDrawer)
+
+  def h(
+    content: List[InlineElement],
+    level: Int,
+    status: Option[String],
+    propertyDrawer: Option[PropertyDrawer]
+  ): Heading =
+    Heading(
+      Some(InlineContainer(content)),
+      level,
+      status = status.map(Status.apply),
+      propertyDrawer = propertyDrawer
+    )
 
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)

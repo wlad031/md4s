@@ -174,7 +174,33 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
     parser.document(toParse) match
       case POut.Success(toFormat, _, _, _) =>
         val formatted = formatter.format(toFormat)
-        println(formatted.replace(" ", "X"))
+        assertEquals(formatted, toParse)
+      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
+  }
+
+  test("Text -> Parsing -> Formatting [2]") {
+    val toParse = """
+|  type:: [[Media/Movie]]
+|  author:: [[Кристофер Нолан]]
+|  status:: [[DONE]]
+|  alias:: Oppenheimer
+|  rating:: 5
+|  done-date:: [[2023-07-29]]
+|- DONE [[Oppenheimer]] in [[Cinema City]]
+|  SCHEDULED: <2023-07-29 Sat 19:00>  
+|- # Cast
+|	- [[Киллиан Мерфи]]
+|	- [[Мэтт Дэймон]]
+|	- [[Роберт Дауни мл.]]
+|	- [[Эмили Блант]]
+|	- [[Рами Малек]]
+|	- [[Флоренс Пью]]
+|	- [[Гари Олдман]]
+|	- others
+""".trim().stripMargin
+    parser.document(toParse) match
+      case POut.Success(toFormat, _, _, _) =>
+        val formatted = formatter.format(toFormat)
         assertEquals(formatted, toParse)
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
   }

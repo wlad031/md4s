@@ -4,6 +4,11 @@ package logseq
 import models.*
 import ops.{ *, given }
 import dev.vgerasimov.md4s.logseq.models.Link.ClassicInternalLink
+import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.Diary
+import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.ActiveTimestamp
+import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.InactiveTimestamp
+import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.ActiveTimestampRange
+import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.InactiveTimestampRange
 
 object formatter:
 
@@ -28,10 +33,14 @@ object formatter:
     case x => throw new Exception(s"Unsupported inline element: $x")
 
   def format(blockElement: BlockElement): String = blockElement match
-    case Paragraph(content, None, indentation) =>
+    case Paragraph(content, None, Nil, _, _, indentation) =>
       s"${format(indentation)}${format(content)}"
-    case Paragraph(content, Some(propertyDrawer), indentation) =>
+    case Paragraph(content, Some(propertyDrawer), Nil,  _, _, indentation) =>
       s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}"
+    case Paragraph(content, None, planning,  _, _, indentation) =>
+      s"${format(indentation)}${format(content)}\n${format(planning)}"
+    case Paragraph(content, Some(propertyDrawer), planning,  _, _, indentation) =>
+      s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}\n${format(planning)}"
     case Heading(Some(content), headerLevel, None, None, None, indentation) =>
       s"${format(indentation)}${"#" * headerLevel} ${format(content)}"
     case HeadedSection(heading, Nil, indentation) =>
@@ -42,6 +51,29 @@ object formatter:
       items.map(item => s"${format(indentation)}${format(item)}").mkString("\n")
     case x => throw new Exception(s"Unsupported block element: $x")
 
+  private def format(timestamp: Timestamp): String = timestamp match
+    case Diary(value) => throw new Exception("Diary timestamp is not supported")
+    case ActiveTimestamp(date, time, repeaterOrDelay) =>
+      s"<${date} ${time}${repeaterOrDelay.map(" " + _).getOrElse("")}>"
+    case InactiveTimestamp(date, time, repeaterOrDelay) =>
+      throw new Exception("Inactive timestamp is not supported")
+    case ActiveTimestampRange(from, to) =>
+      throw new Exception("Active timestamp range is not supported")
+    case InactiveTimestampRange(from, to) =>
+      throw new Exception("Inactive timestamp range is not supported")
+
+  private def format(planning: List[Planning]): String =
+    planning.map {
+      case Planning.Scheduled(date, None, _, _) => s"SCHEDULED: <${date}>"
+      case Planning.Scheduled(date, Some(spacing), _, _) =>
+        s"${format(spacing)}SCHEDULED: <${date}>"
+      case Planning.Deadline(date, None, _, _)  => s"DEADLINE: <${date}>"
+      case Planning.Deadline(date, Some(spacing), _, _) =>
+        s"${format(spacing)}DEADLINE: <${date}>"
+      case Planning.Closed(date, None, _, _)    => s"CLOSED: <${date}>"
+      case Planning.Closed(date, Some(spacing), _, _) =>
+        s"${format(spacing)}CLOSED: <${date}>"
+    }.mkString("\n")
   private def format(spacing: Spacing): String = spacing.value
   private def format(indentation: Indentation): String = indentation.value
   private def format(propertyDrawer: PropertyDrawer): String = propertyDrawer.nodes.map {

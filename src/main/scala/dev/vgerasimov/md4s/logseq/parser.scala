@@ -60,10 +60,10 @@ class parser(ctx: Context = Context.defaultCtx):
   def document: P[LogseqMarkdown] = evalAndLazyThen(delayedDocument)
 
   def delayedDocument: AndLazyThen[Option[PropertyDrawer], LogseqMarkdown] =
-    mapAndLazyThen(andLazyThen(propertyDrawer.?, (blockElement(minIndentation = 0).* ~ end)))({
+    mapAndLazyThen(andLazyThen(propertyDrawer.?, (blockElement(minIndentation = 0).* ~ end))) {
       case (properties, blocks) => LogseqMarkdown(blocks, properties)
-    })
-    
+    }
+
   def spacing: P[Spacing] = (tab | space).+.!.map(Spacing.apply)
 
   private def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =
@@ -114,14 +114,6 @@ class parser(ctx: Context = Context.defaultCtx):
       def headerLevel: P[Int] =
         (P("#").rep(min = headingMinLevel, max = headingMaxLevel) ~ !P("#")).!.map(_.length)
 
-      def priority: P[Priority] =
-        (P("[#") ~ fromRange("A-Z").! ~ P("]"))
-          .map(s => s.toList.head)
-          .map(Priority.apply)
-
-      def status: P[Status] =
-        ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
-
       (!listMarker ~ (headerLevel ~ s1) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
         case (
               headerLevel: Int,
@@ -132,6 +124,14 @@ class parser(ctx: Context = Context.defaultCtx):
             ) =>
           Heading(content, headerLevel, status, priority, drawer)
       }
+
+  private def priority: P[Priority] =
+    (P("[#") ~ fromRange("A-Z").! ~ P("]"))
+      .map(s => s.toList.head)
+      .map(Priority.apply)
+
+  private def status: P[Status] =
+    ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
 
   private def propertyDrawer: P[PropertyDrawer] = {
     def nodePropertyName: P[String] = until(P("::") | eol).!
@@ -196,9 +196,18 @@ class parser(ctx: Context = Context.defaultCtx):
   // TODO: Make !_conditions better
   private def paragraph(minIndentation: Int): P[Paragraph] =
     !((s0 ~ listMarker) | (s0 ~ P("#").+ ~ s1))
-    ~ (indentation(min = minIndentation) ~ inlineContainer ~ propertyDrawer.?).map {
-      case (ind, content, drawer) =>
-        Paragraph(content, drawer, ind)
+    ~ (indentation(min =
+      minIndentation
+    ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer ~ propertyDrawer.? ~ planning.*).map {
+      case (ind, priority, status, content, drawer, planning) =>
+        Paragraph(
+          content,
+          drawer,
+          indentation = ind,
+          planning = planning,
+          priority = priority,
+          status = status
+        )
     }
 
   private def codeBlock: P[CodeBlock] =
@@ -241,11 +250,12 @@ class parser(ctx: Context = Context.defaultCtx):
 
     def page: P[Location.Internal.Page] =
       (
-        P("[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map { case (first, next) =>
+        P("[[") ~ !(P("]") | s1) ~ (anyChar.! ~ until(P("]]")).!).map { case (first, next) =>
           first + next
         } ~ P("]]")
       ).map(Location.Internal.Page.apply)
 
+    // FIXME: This is a mess, also page and block are not the same
     def block: P[Location.Internal.Block] =
       (
         P("((") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map { case (first, next) =>
@@ -277,6 +287,48 @@ class parser(ctx: Context = Context.defaultCtx):
       ).map { case (text, location) => ExternalLink(location, Some(text)) }
 
     internalLink | externalLink
+
+  // TODO: Refactor
+  private def planning: P[Planning] =
+    import Planning.*
+
+    def section(name: String) =
+      spacing.? ~ P(name) ~ P(":") ~ spacing.? ~ timestamp ~ spacing.? ~ eolOrEnd
+
+    def closed: P[Closed] =
+      section("CLOSED").map {
+        case (spacingBeforeKeyword, spacingBeforeTimestamp, timestamp, spacingAfterTimestamp) =>
+          Closed(
+            timestamp,
+            spacingBeforeKeyword = spacingBeforeKeyword,
+            spacingBeforeTimestamp = spacingBeforeTimestamp,
+            spacingAfterTimestamp = spacingAfterTimestamp
+          )
+      }
+
+    def deadline: P[Deadline] =
+      section("DEADLINE").map {
+        case (spacingBeforeKeyword, spacingBeforeTimestamp, timestamp, spacingAfterTimestamp) =>
+          Deadline(
+            timestamp,
+            spacingBeforeKeyword = spacingBeforeKeyword,
+            spacingBeforeTimestamp = spacingBeforeTimestamp,
+            spacingAfterTimestamp = spacingAfterTimestamp
+          )
+      }
+
+    def scheduled: P[Scheduled] =
+      section("SCHEDULED").map {
+        case (spacingBeforeKeyword, spacingBeforeTimestamp, timestamp, spacingAfterTimestamp) =>
+          Scheduled(
+            timestamp,
+            spacingBeforeKeyword = spacingBeforeKeyword,
+            spacingBeforeTimestamp = spacingBeforeTimestamp,
+            spacingAfterTimestamp = spacingAfterTimestamp
+          )
+      }
+
+    closed | deadline | scheduled
 
   private def table: P[Table] = {
     import Table.*
