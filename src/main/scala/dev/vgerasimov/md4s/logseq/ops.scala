@@ -54,8 +54,7 @@ object ops:
   def listItem(content: InlineElement, marker: String): MarkdownList.Item =
     MarkdownList.Item(
       List(Paragraph(InlineContainer(List(content)))),
-      marker,
-      spacingAfterMarker = Some(Spacing(" "))
+      MarkdownList.Item.Marker(marker, spacingAfter = Spacing.defaultSpacing),
     )
 
   def listItem(content: String, marker: String): MarkdownList.Item = listItem(Text(content), marker)
@@ -80,11 +79,13 @@ object ops:
     propertyDrawer: Option[PropertyDrawer]
   ): Heading =
     Heading(
+      Heading.Level(level),
       Some(InlineContainer(content)),
-      level,
-      status = status.map(Status.apply),
+      status = status.map(s => Status(s, spacingAfter = Some(Spacing.defaultSpacing))),
       propertyDrawer = propertyDrawer
     )
 
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
+
+end ops

@@ -61,7 +61,7 @@ class parser(ctx: Context = Context.defaultCtx):
 
   def delayedDocument: AndLazyThen[Option[PropertyDrawer], LogseqMarkdown] =
     mapAndLazyThen(andLazyThen(propertyDrawer.?, (blockElement(minIndentation = 0).* ~ end))) {
-      case (properties, blocks) => LogseqMarkdown(blocks, properties)
+      case (properties, blocks) => LogseqMarkdown(blocks = blocks, propertyDrawer = properties)
     }
 
   def spacing: P[Spacing] = (tab | space).+.!.map(Spacing.apply)
@@ -95,43 +95,54 @@ class parser(ctx: Context = Context.defaultCtx):
       fail[HeadedSection]
     else
       &(indentation(min = minIndentation) ~ heading(headingMinLevel, headingMaxLevel)).flatMap {
-        case (ind, h) =>
+        case (preI, preH) =>
           (
             indentation(min = minIndentation)
             ~ heading(headingMinLevel, headingMaxLevel)
             ~ blockElement(
               listMinLevel = listMinLevel,
-              headingMinLevel = h.headerLevel + 1,
+              headingMinLevel = preH.level.value + 1,
               headingMaxLevel = headingMaxLevel,
               minIndentation = minIndentation
             ).*
-          ).map { case (ind, heading, content) => HeadedSection(heading, content, ind) }
+          ).map { case (i, h, c) => HeadedSection(heading = h, content = c, indentation = Some(i)) }
       }
 
   private def heading(headingMinLevel: Int, headingMaxLevel: Int): P[Heading] =
     if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel) fail[Heading]
     else
-      def headerLevel: P[Int] =
-        (P("#").rep(min = headingMinLevel, max = headingMaxLevel) ~ !P("#")).!.map(_.length)
+      def level: P[Heading.Level] =
+        def chars: P[Int] =
+          P("#").rep(min = headingMinLevel, max = headingMaxLevel, greedy = true).!.map(_.length)
+        (chars ~ spacing).map { case (value, spacing) =>
+          Heading.Level(value = value, spacingAfter = spacing)
+        }
 
-      (!listMarker ~ (headerLevel ~ s1) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
+      (!listMarker ~ level ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
         case (
-              headerLevel: Int,
+              level: Heading.Level,
               priority: Option[Priority],
               status: Option[Status],
               content: Option[InlineContainer],
               drawer: Option[PropertyDrawer]
             ) =>
-          Heading(content, headerLevel, status, priority, drawer)
+          Heading(
+            content = content,
+            level = level,
+            status = status,
+            priority = priority,
+            propertyDrawer = drawer
+          )
       }
 
   private def priority: P[Priority] =
-    (P("[#") ~ fromRange("A-Z").! ~ P("]"))
-      .map(s => s.toList.head)
-      .map(Priority.apply)
+    (((P("[#") ~ fromRange("A-Z").! ~ P("]"))
+      .map(s => s.toList.head)) ~ spacing.?).map { case (v, s) => Priority(v, s) }
 
   private def status: P[Status] =
-    ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).!.map(Status.apply)
+    (ctx.statusKeywords.map(kw => P(kw)).reduce(_ | _).! ~ spacing.?).map { case (v, s) =>
+      Status(v, s)
+    }
 
   private def propertyDrawer: P[PropertyDrawer] = {
     def nodePropertyName: P[String] = until(P("::") | eol).!
@@ -151,9 +162,11 @@ class parser(ctx: Context = Context.defaultCtx):
       .map(PropertyDrawer.apply)
   }
 
-  private def orderedListMarker: P[Int] = d.+.!.map(_.toInt) ~ P(".")
-  private def listMarker: P[(String | Int, Spacing)] =
-    (anyFrom("-+").! | orderedListMarker) ~ spacing
+  private def orderedListMarker: P[String] = (d.+ ~ P(".")).!
+  private def listMarker: P[MarkdownList.Item.Marker] =
+    ((anyFrom("-+").! | orderedListMarker) ~ spacing).map { case (v, s) =>
+      MarkdownList.Item.Marker(v, s)
+    }
 
   private def list(
     listMinLevel: Int,
@@ -163,34 +176,24 @@ class parser(ctx: Context = Context.defaultCtx):
     if (listMinLevel > ctx.listMaxLevel || listMinLevel > listMaxLevel)
       fail[MarkdownList]
     else
-      &(indentation(min = listMinLevel) ~ listMarker).flatMap {
-        case (ind, (marker: String, spacing)) =>
-          (indentation(min = listMinLevel).!!
-          ~ listMarker.!!
-          ~ (
-            blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).?
-            ~ blockElement(minIndentation = ind.level + 1, listMinLevel = listMinLevel + 1).*
-          ).map {
-            case (Some(first), next) =>
-              MarkdownList.Item(first :: next, marker, spacingAfterMarker = Some(spacing))
-            case (None, next) => MarkdownList.Item(next, marker, spacingAfterMarker = Some(spacing))
-          })
-            .rep(min = 1)
-            .map { items => MarkdownList.Unordered(items, ind) }
-        case (ind, (marker: Int, spacing)) =>
-          (indentation(min = listMinLevel).!!
-          ~ listMarker.!!
-          ~ (
-            blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).?
-            ~ blockElement(minIndentation = ind.level + 1, listMinLevel = listMinLevel + 1).*
-          ).map {
-            case (Some(first), next) =>
-              MarkdownList.Item(first :: next, marker.toString, spacingAfterMarker = Some(spacing))
-            case (None, next) =>
-              MarkdownList.Item(next, marker.toString, spacingAfterMarker = Some(spacing))
-          })
-            .rep(min = 1)
-            .map { items => MarkdownList.Ordered(items, ind) }
+      &(indentation(min = listMinLevel) ~ listMarker).flatMap { case (preIndentation, preMarker) =>
+        (indentation(min = listMinLevel).!!
+        ~ listMarker.!!
+        ~ (
+          blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).?
+          ~ blockElement(
+            minIndentation = preIndentation.level + 1,
+            listMinLevel = listMinLevel + 1
+          ).*
+        ).map {
+          case (Some(first), next) =>
+            MarkdownList.Item(first :: next, preMarker)
+          case (None, next) => MarkdownList.Item(next, preMarker)
+        })
+          .rep(min = 1)
+          .map { items =>
+            MarkdownList.Unordered(items = items, indentation = Some(preIndentation))
+          }
       }
 
   // TODO: Make !_conditions better
@@ -201,8 +204,8 @@ class parser(ctx: Context = Context.defaultCtx):
     ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer ~ propertyDrawer.? ~ planning.*).map {
       case (ind, priority, status, content, drawer, planning) =>
         Paragraph(
-          content,
-          drawer,
+          content = content,
+          propertyDrawer = drawer,
           indentation = ind,
           planning = planning,
           priority = priority,

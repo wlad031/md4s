@@ -15,13 +15,36 @@ object models:
     * items such paragraphs, code blocks, and so on.
     */
   case class LogseqMarkdown(
-    blocks: List[BlockElement],
-    propertyDrawer: Option[PropertyDrawer] = None
+    propertyDrawer: Option[PropertyDrawer] = None,
+    blocks: List[BlockElement] = Nil
   ) extends MarkdownDocument
 
-  case class Spacing(value: String)
-  case class Status(value: String)
-  case class Priority(value: Char)
+  case class Spacing(value: String = Spacing.defaultSpaceValue)
+  object Spacing:
+    private val defaultSpaceValue = " "
+    val defaultSpacing = Spacing()
+  trait RightSpaced:
+    def spacingAfter: Spacing = Spacing.defaultSpacing
+  trait MaybeRightSpaced:
+    def spacingAfter: Option[Spacing] = None
+
+  case class Indentation(
+    level: Int = Indentation.defaultLevel,
+    value: String = Indentation.defaultValue
+  )
+  object Indentation:
+    private val defaultLevel: Int = 0
+    private val defaultValue: String = ""
+    val defaultIndentation: Indentation = Indentation()
+  trait Indentable:
+    def indentation: Indentation = Indentation.defaultIndentation
+  trait MaybeIndentable:
+    def indentation: Option[Indentation] = None
+
+  case class Status(value: String, override val spacingAfter: Option[Spacing] = None)
+      extends MaybeRightSpaced
+  case class Priority(value: Char, override val spacingAfter: Option[Spacing] = None)
+      extends MaybeRightSpaced
 
   case class PropertyDrawer(nodes: List[PropertyDrawer.Node])
   object PropertyDrawer:
@@ -31,10 +54,6 @@ object models:
       spacingBeforeName: Option[Spacing] = None,
       spacingBeforeValue: Option[Spacing] = Some(Spacing(" "))
     )
-
-  case class Indentation(level: Int, value: String)
-  object Indentation:
-    val zero: Indentation = Indentation(0, "")
 
   sealed trait Planning:
     def timestamp: Timestamp
@@ -68,39 +87,51 @@ private[logseq] object blockElements:
 
   case class HeadedSection(
     heading: Heading,
-    content: List[BlockElement],
-    indentation: Indentation = Indentation.zero
+    content: List[BlockElement] = Nil,
+    override val indentation: Option[Indentation] = None
   ) extends BlockElement
+      with MaybeIndentable
 
   case class Heading(
-    content: Option[InlineContainer],
-    headerLevel: Int,
+    level: Heading.Level,
+    content: Option[InlineContainer] = None,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
     propertyDrawer: Option[PropertyDrawer] = None,
-    indentation: Indentation = Indentation.zero
+    override val indentation: Option[Indentation] = None
   ) extends BlockElement
+      with MaybeIndentable
+  object Heading:
+    case class Level(value: Int, override val spacingAfter: Spacing = Spacing.defaultSpacing)
+        extends RightSpaced
 
   case class Paragraph(
-    content: InlineContainer,
+    content: InlineContainer = InlineContainer.empty,
     propertyDrawer: Option[PropertyDrawer] = None,
     planning: List[Planning] = Nil,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
-    indentation: Indentation = Indentation.zero
+    override val indentation: Option[Indentation] = None
   ) extends BlockElement
+      with MaybeIndentable
 
-  sealed trait MarkdownList extends BlockElement
+  sealed trait MarkdownList extends BlockElement with MaybeIndentable
   object MarkdownList:
-    case class Ordered(items: List[Item], indentation: Indentation = Indentation.zero)
-        extends MarkdownList
-    case class Unordered(items: List[Item], indentation: Indentation = Indentation.zero)
-        extends MarkdownList
+    case class Ordered(
+      items: List[Item] = Nil,
+      override val indentation: Option[Indentation] = None
+    ) extends MarkdownList
+    case class Unordered(
+      items: List[Item] = Nil,
+      override val indentation: Option[Indentation] = None
+    ) extends MarkdownList
     case class Item(
       content: List[BlockElement],
-      marker: String,
-      spacingAfterMarker: Option[Spacing] = Some(Spacing(" "))
-    )
+      marker: Item.Marker
+    ) extends RightSpaced
+    object Item:
+      case class Marker(value: String, override val spacingAfter: Spacing = Spacing.defaultSpacing)
+          extends RightSpaced
 
   case class Blockquote(content: List[BlockElement]) extends BlockElement
 
@@ -113,8 +144,9 @@ private[logseq] object blockElements:
 
   case class Table(
     rows: List[Table.Row],
-    indentation: Indentation = Indentation.zero
+    override val indentation: Option[Indentation] = None
   ) extends BlockElement
+      with MaybeIndentable
 
   object Table:
     sealed trait Row
@@ -129,8 +161,10 @@ private[logseq] object inlineElements:
   sealed trait InlineElement
 
   case class InlineContainer(
-    elements: List[InlineElement]
+    elements: List[InlineElement] = Nil
   ) extends InlineElement
+  object InlineContainer:
+    val empty: InlineContainer = InlineContainer()
 
   case class Text(content: String) extends InlineElement
 
