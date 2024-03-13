@@ -39,7 +39,9 @@ object models:
   trait Indentable:
     def indentation: Indentation = Indentation.defaultIndentation
   trait MaybeIndentable:
-    def indentation: Option[Indentation] = None
+    def indentation: Option[Indentation] = Some(
+      Indentation.defaultIndentation
+    ) // TODO: It should be rather None
 
   case class Status(value: String, override val spacingAfter: Option[Spacing] = None)
       extends MaybeRightSpaced
@@ -88,7 +90,9 @@ private[logseq] object blockElements:
   case class HeadedSection(
     heading: Heading,
     content: List[BlockElement] = Nil,
-    override val indentation: Option[Indentation] = None
+    override val indentation: Option[Indentation] = Some(
+      Indentation.defaultIndentation
+    ) // TODO: It should be rather None
   ) extends BlockElement
       with MaybeIndentable
 
@@ -98,7 +102,9 @@ private[logseq] object blockElements:
     status: Option[Status] = None,
     priority: Option[Priority] = None,
     propertyDrawer: Option[PropertyDrawer] = None,
-    override val indentation: Option[Indentation] = None
+    override val indentation: Option[Indentation] = Some(
+      Indentation.defaultIndentation
+    ) // TODO: It should be rather None
   ) extends BlockElement
       with MaybeIndentable
   object Heading:
@@ -111,7 +117,9 @@ private[logseq] object blockElements:
     planning: List[Planning] = Nil,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
-    override val indentation: Option[Indentation] = None
+    override val indentation: Option[Indentation] = Some(
+      Indentation.defaultIndentation
+    ) // TODO: It should be rather None
   ) extends BlockElement
       with MaybeIndentable
 
@@ -119,11 +127,15 @@ private[logseq] object blockElements:
   object MarkdownList:
     case class Ordered(
       items: List[Item] = Nil,
-      override val indentation: Option[Indentation] = None
+      override val indentation: Option[Indentation] = Some(
+        Indentation.defaultIndentation
+      ) // TODO: It should be rather None
     ) extends MarkdownList
     case class Unordered(
       items: List[Item] = Nil,
-      override val indentation: Option[Indentation] = None
+      override val indentation: Option[Indentation] = Some(
+        Indentation.defaultIndentation
+      ) // TODO: It should be rather None
     ) extends MarkdownList
     case class Item(
       content: List[BlockElement],
@@ -144,7 +156,9 @@ private[logseq] object blockElements:
 
   case class Table(
     rows: List[Table.Row],
-    override val indentation: Option[Indentation] = None
+    override val indentation: Option[Indentation] = Some(
+      Indentation.defaultIndentation
+    ) // TODO: It should be rather None
   ) extends BlockElement
       with MaybeIndentable
 

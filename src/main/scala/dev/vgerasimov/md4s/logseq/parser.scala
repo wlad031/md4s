@@ -206,7 +206,7 @@ class parser(ctx: Context = Context.defaultCtx):
         Paragraph(
           content = content,
           propertyDrawer = drawer,
-          indentation = ind,
+          indentation = Some(ind),
           planning = planning,
           priority = priority,
           status = status

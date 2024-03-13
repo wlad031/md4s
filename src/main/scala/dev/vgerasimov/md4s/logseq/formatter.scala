@@ -13,9 +13,10 @@ import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.InactiveTimestampRang
 object formatter:
 
   def format(document: LogseqMarkdown): String = document match
-    case LogseqMarkdown(blocks, Some(propertyDrawer)) =>
-      s"${format(propertyDrawer)}\n${blocks.map(format).mkString("\n")}"
-    case LogseqMarkdown(blocks, None) => s"${blocks.map(format).mkString("\n")}"
+    // case LogseqMarkdown(blocks, Some(propertyDrawer)) =>
+    //   s"${format(propertyDrawer)}\n${blocks.map(format).mkString("\n")}"
+    // case LogseqMarkdown(blocks, None) => s"${blocks.map(format).mkString("\n")}"
+    case x => throw new Exception(s"Unsupported document: $x")
 
   def format(inlineElement: InlineElement): String = inlineElement match
     case InlineContainer(elements) => elements.map(format).mkString
@@ -33,22 +34,22 @@ object formatter:
     case x => throw new Exception(s"Unsupported inline element: $x")
 
   def format(blockElement: BlockElement): String = blockElement match
-    case Paragraph(content, None, Nil, _, _, indentation) =>
-      s"${format(indentation)}${format(content)}"
-    case Paragraph(content, Some(propertyDrawer), Nil,  _, _, indentation) =>
-      s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}"
-    case Paragraph(content, None, planning,  _, _, indentation) =>
-      s"${format(indentation)}${format(content)}\n${format(planning)}"
-    case Paragraph(content, Some(propertyDrawer), planning,  _, _, indentation) =>
-      s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}\n${format(planning)}"
-    case Heading(Some(content), headerLevel, None, None, None, indentation) =>
-      s"${format(indentation)}${"#" * headerLevel} ${format(content)}"
-    case HeadedSection(heading, Nil, indentation) =>
-      s"${format(heading)}"
-    case HeadedSection(heading, content, indentation) =>
-      s"${format(heading)}\n${content.map(format).mkString("\n")}"
-    case MarkdownList.Unordered(items, indentation) =>
-      items.map(item => s"${format(indentation)}${format(item)}").mkString("\n")
+    // case Paragraph(content, None, Nil, _, _, indentation) =>
+    //   s"${format(indentation)}${format(content)}"
+    // case Paragraph(content, Some(propertyDrawer), Nil,  _, _, indentation) =>
+    //   s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}"
+    // case Paragraph(content, None, planning,  _, _, indentation) =>
+    //   s"${format(indentation)}${format(content)}\n${format(planning)}"
+    // case Paragraph(content, Some(propertyDrawer), planning,  _, _, indentation) =>
+    //   s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}\n${format(planning)}"
+    // case Heading(Some(content), headerLevel, None, None, None, indentation) =>
+    //   s"${format(indentation)}${"#" * headerLevel} ${format(content)}"
+    // case HeadedSection(heading, Nil, indentation) =>
+    //   s"${format(heading)}"
+    // case HeadedSection(heading, content, indentation) =>
+    //   s"${format(heading)}\n${content.map(format).mkString("\n")}"
+    // case MarkdownList.Unordered(items, indentation) =>
+    //   items.map(item => s"${format(indentation)}${format(item)}").mkString("\n")
     case x => throw new Exception(s"Unsupported block element: $x")
 
   private def format(timestamp: Timestamp): String = timestamp match
@@ -102,9 +103,10 @@ object formatter:
   }
     .mkString("\n")
   private def format(item: MarkdownList.Item): String = item match
-    case MarkdownList.Item(content, marker, Some(spacingAfterMarker)) =>
-      s"${marker}${format(spacingAfterMarker)}${content.map(format).mkString("\n")}"
-    case MarkdownList.Item(content, marker, None) =>
-      s"${marker}${content.map(format).mkString("\n")}"
+    // case MarkdownList.Item(content, marker, Some(spacingAfterMarker)) =>
+    //   s"${marker}${format(spacingAfterMarker)}${content.map(format).mkString("\n")}"
+    // case MarkdownList.Item(content, marker, None) =>
+    //   s"${marker}${content.map(format).mkString("\n")}"
+    case x => throw new Exception(s"Unsupported list item: $x")
 
 end formatter

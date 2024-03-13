@@ -95,9 +95,9 @@ def parseAllLogseq =
                 .value == "Media/Movie"
             ))
               next() match
-                case Success(LogseqMarkdown(_, None), _, _, _) => 
+                case Success(LogseqMarkdown(None, _), _, _, _) => 
                   println(s"[ERROR] Something went wrong: $f")
-                case Success(LogseqMarkdown(blocks, Some(propertyDrawer)), _, _, _) => 
+                case Success(LogseqMarkdown(Some(propertyDrawer), blocks), _, _, _) => 
                   if (propertyDrawer.nodes.exists(n =>
                       n.name == "gid" && n.value.isDefined)) {
                         println(s"[INFO] Page already has gid: $f")
@@ -109,7 +109,7 @@ def parseAllLogseq =
                             Some(InlineContainer(List(Text(gid))))
                           )
                         )
-                        val newDoc = LogseqMarkdown(blocks, Some(newPropertyDrawer))
+                        val newDoc = LogseqMarkdown(blocks = blocks, propertyDrawer = Some(newPropertyDrawer))
                         val newDocText = formatter.format(newDoc)
                         val writer = new java.io.PrintWriter(f.toFile())
                         writer.write(newDocText)
@@ -117,7 +117,7 @@ def parseAllLogseq =
                         println(s"[INFO] Added gid to: $f")
                       }
                     i = i + 1
-                  val newDoc = LogseqMarkdown(blocks, Some(propertyDrawer))
+                  val newDoc = LogseqMarkdown(blocks = blocks, propertyDrawer = Some(propertyDrawer))
                 case Failure(message, _) => 
                   println(s"[ERROR] Failed to parse: $f")
         case Failure(message, _) => 

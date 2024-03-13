@@ -79,7 +79,10 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
 
   test("Simple text paragraph with indentation is formatted as correctly") {
     val toFormat =
-      Paragraph(InlineContainer(List(Text("Hello, world!"))), indentation = Indentation(1, "  "))
+      Paragraph(
+        InlineContainer(List(Text("Hello, world!"))),
+        indentation = Some(Indentation(1, "  "))
+      )
     val expected = "  Hello, world!"
     assertEquals(formatter.format(toFormat), expected)
   }
@@ -102,7 +105,7 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
     val toFormat =
       Paragraph(
         InlineContainer(List(Text("Hello, world!"))),
-        indentation = Indentation(2, "\t\t"),
+        indentation = Some(Indentation(2, "\t\t")),
         propertyDrawer = Some(
           PropertyDrawer(
             List(
@@ -121,7 +124,10 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
 
   test("Simple headed section with single paragraph is formatted as correctly") {
     val toFormat = HeadedSection(
-      Heading(Some(InlineContainer(List(Text("Hello, world!")))), 1),
+      Heading(
+        level = Heading.Level(value = 1),
+        content = Some(InlineContainer(List(Text("Hello, world!"))))
+      ),
       List(Paragraph(InlineContainer(List(Text("Hello, world!")))))
     )
     val expected = "# Hello, world!\nHello, world!"
@@ -130,7 +136,10 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
 
   test("Simple headed section with multiple paragraphs is formatted as correctly") {
     val toFormat = HeadedSection(
-      Heading(Some(InlineContainer(List(Text("Hello, world!")))), 1),
+      Heading(
+        level = Heading.Level(value = 1),
+        content = Some(InlineContainer(List(Text("Hello, world!"))))
+      ),
       List(
         Paragraph(InlineContainer(List(Text("Hello, world!")))),
         Paragraph(InlineContainer(List(Text("Hello, world!"))))
@@ -143,12 +152,15 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   test("Simple headed section with indentation is formatted as correctly") {
     val toFormat = HeadedSection(
       Heading(
-        Some(InlineContainer(List(Text("Hello, world!")))),
-        1,
-        indentation = Indentation(1, "  ")
+        level = Heading.Level(value = 1),
+        content = Some(InlineContainer(List(Text("Hello, world!")))),
+        indentation = Some(Indentation(1, "  "))
       ),
       List(
-        Paragraph(InlineContainer(List(Text("Hello, world!"))), indentation = Indentation(1, "  "))
+        Paragraph(
+          InlineContainer(List(Text("Hello, world!"))),
+          indentation = Some(Indentation(1, "  "))
+        )
       )
     )
     val expected = "  # Hello, world!\n  Hello, world!"
