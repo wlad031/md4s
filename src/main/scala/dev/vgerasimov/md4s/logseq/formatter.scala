@@ -9,17 +9,40 @@ import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.ActiveTimestamp
 import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.InactiveTimestamp
 import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.ActiveTimestampRange
 import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.InactiveTimestampRange
+import dev.vgerasimov.md4s.logseq.inlineElements.Timestamp.Date.DayName
 
 object formatter:
 
+  private def formatMaybeOrEmpty[A](maybe: Option[A], format: A => String): String =
+    maybe.map(format).getOrElse("")
+
+  private def append[A](f: A => String, s: => String): A => String = x => s"${f(x)}$s"
+  private def appendLineBreak[A](f: A => String): A => String = append(f, "\n")
+  private def appendSpace[A](f: A => String): A => String = append(f, " ")
+  private def concatWith[A](ls: List[A], format: A => String, s: => String): String = ls.map(format).mkString(s)
+  private def concatWithLineBreak[A](ls: List[A], format: A => String): String = concatWith(ls, format, "\n")
+  private def concatWithSpace[A](ls: List[A], format: A => String): String = concatWith(ls, format, " ")
+  private def concatMaybesWith[A](ls: List[Option[A]], format: A => String, s: => String): String =
+    ls.filter(_.isDefined).map(_.get).map(format).mkString(s)
+
+  private def formatBlockElements(blocks: List[BlockElement]): String = concatWithLineBreak(blocks, format)
+  private def formatInlineElements(elements: List[InlineElement]): String = concatWith(elements, format, "")
+  private def formatMaybePropertyDrawer(maybePropertyDrawer: Option[PropertyDrawer]): String =
+    formatMaybeOrEmpty(maybePropertyDrawer, format)
+  private def formatMaybeSpacing(maybeSpacing: Option[Spacing]): String =
+    formatMaybeOrEmpty(maybeSpacing, format)
+
   def format(document: LogseqMarkdown): String = document match
-    // case LogseqMarkdown(blocks, Some(propertyDrawer)) =>
-    //   s"${format(propertyDrawer)}\n${blocks.map(format).mkString("\n")}"
-    // case LogseqMarkdown(blocks, None) => s"${blocks.map(format).mkString("\n")}"
-    case x => throw new Exception(s"Unsupported document: $x")
+    case LogseqMarkdown(maybePropertyDrawer, blocks) =>
+      val res = StringBuffer()
+      maybePropertyDrawer.foreach(x => res.append(format(x)))
+      if (blocks.nonEmpty) 
+        if (!res.isEmpty()) res.append("\n")
+        res.append(formatBlockElements(blocks))
+      res.toString()
 
   def format(inlineElement: InlineElement): String = inlineElement match
-    case InlineContainer(elements) => elements.map(format).mkString
+    case InlineContainer(elements) => formatInlineElements(elements)
     case Text(content)             => content
     case Emphasis(marker: Emphasis.Marker, contents) =>
       s"${marker.value}${format(contents)}${marker.value}"
@@ -34,28 +57,49 @@ object formatter:
     case x => throw new Exception(s"Unsupported inline element: $x")
 
   def format(blockElement: BlockElement): String = blockElement match
-    // case Paragraph(content, None, Nil, _, _, indentation) =>
-    //   s"${format(indentation)}${format(content)}"
-    // case Paragraph(content, Some(propertyDrawer), Nil,  _, _, indentation) =>
-    //   s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}"
-    // case Paragraph(content, None, planning,  _, _, indentation) =>
-    //   s"${format(indentation)}${format(content)}\n${format(planning)}"
-    // case Paragraph(content, Some(propertyDrawer), planning,  _, _, indentation) =>
-    //   s"${format(indentation)}${format(content)}\n${format(propertyDrawer)}\n${format(planning)}"
-    // case Heading(Some(content), headerLevel, None, None, None, indentation) =>
-    //   s"${format(indentation)}${"#" * headerLevel} ${format(content)}"
-    // case HeadedSection(heading, Nil, indentation) =>
-    //   s"${format(heading)}"
-    // case HeadedSection(heading, content, indentation) =>
-    //   s"${format(heading)}\n${content.map(format).mkString("\n")}"
-    // case MarkdownList.Unordered(items, indentation) =>
-    //   items.map(item => s"${format(indentation)}${format(item)}").mkString("\n")
+    case Paragraph(content, maybePropertyDrawer, planning, maybeStatus, maybePriority, maybeIndentation) =>
+      val res = StringBuffer()
+      maybeIndentation.foreach(x => res.append(format(x)))
+      maybePriority.foreach(x => res.append(format(x)))
+      maybeStatus.foreach(x => res.append(format(x)))
+      if (content.elements.nonEmpty) 
+        // if (!res.isEmpty()) res.append("\n")
+        res.append(format(content))
+      maybePropertyDrawer.foreach(x => res.append("\n").append(format(x)))
+      if (planning.nonEmpty) 
+        res.append("\n")
+        planning.foreach(x => res.append(format(x)))
+      res.toString()
+    case Heading(level, maybeContent, maybeStatus, maybePriority, maybePropertyDrawer, maybeIndentation) =>
+      val res = StringBuffer()
+      maybeIndentation.foreach(x => res.append(format(x)))
+      res.append(format(level))
+      maybePriority.foreach(x => res.append(format(x)))
+      maybeStatus.foreach(x => res.append(format(x)))
+      maybeContent.foreach(x => res.append(format(x)))
+      maybePropertyDrawer.foreach(x => res.append(format(x)))
+      res.toString()
+    case HeadedSection(heading, content, maybeIndentation) =>
+      val res = StringBuffer()
+      maybeIndentation.foreach(x => res.append(format(x)))
+      res.append(format(heading))
+      if (content.nonEmpty) res.append("\n").append(formatBlockElements(content))
+      res.toString()
+    case MarkdownList.Unordered(items, maybeIndentation) =>
+      val indentation = maybeIndentation.map(format).getOrElse("")
+      items.map(x => indentation + format(x)).mkString("\n")
     case x => throw new Exception(s"Unsupported block element: $x")
 
   private def format(timestamp: Timestamp): String = timestamp match
     case Diary(value) => throw new Exception("Diary timestamp is not supported")
     case ActiveTimestamp(date, time, repeaterOrDelay) =>
-      s"<${date} ${time}${repeaterOrDelay.map(" " + _).getOrElse("")}>"
+      val res = StringBuffer()
+      res.append("<")
+      res.append(format(date))
+      time.foreach(x => res.append(" ").append(format(x)))
+      repeaterOrDelay.foreach(x => res.append(" ").append(x))
+      res.append(">")
+      res.toString()
     case InactiveTimestamp(date, time, repeaterOrDelay) =>
       throw new Exception("Inactive timestamp is not supported")
     case ActiveTimestampRange(from, to) =>
@@ -63,18 +107,46 @@ object formatter:
     case InactiveTimestampRange(from, to) =>
       throw new Exception("Inactive timestamp range is not supported")
 
-  private def format(planning: List[Planning]): String =
-    planning.map {
-      case Planning.Scheduled(date, None, _, _) => s"SCHEDULED: <${date}>"
-      case Planning.Scheduled(date, Some(spacing), _, _) =>
-        s"${format(spacing)}SCHEDULED: <${date}>"
-      case Planning.Deadline(date, None, _, _)  => s"DEADLINE: <${date}>"
-      case Planning.Deadline(date, Some(spacing), _, _) =>
-        s"${format(spacing)}DEADLINE: <${date}>"
-      case Planning.Closed(date, None, _, _)    => s"CLOSED: <${date}>"
-      case Planning.Closed(date, Some(spacing), _, _) =>
-        s"${format(spacing)}CLOSED: <${date}>"
-    }.mkString("\n")
+  private def format(date: Timestamp.Date): String = date match
+    case Timestamp.Date(year, month, day, maybeDayName) => 
+      val res = StringBuffer()
+      res.append(format(year)).append("-").append(format(month)).append("-").append(format(day))
+      maybeDayName.foreach(x => res.append(" ").append(format(x)))
+      res.toString()
+  private def format(year: Timestamp.Date.Year): String = year.value.toString
+  private def format(month: Timestamp.Date.Month): String = "%02d".format(month.value)
+  private def format(day: Timestamp.Date.Day): String = "%02d".format(day.value)
+  private def format(dayName: Timestamp.Date.DayName): String = dayName match
+    case DayName.Monday => "Mon"
+    case DayName.Tuesday => "Tue"
+    case DayName.Wednesday => "Wed"
+    case DayName.Thursday => "Thu"
+    case DayName.Friday => "Fri"
+    case DayName.Saturday => "Sat"
+    case DayName.Sunday => "Sun"
+
+  private def format(time: Timestamp.Time): String = time match
+    case Timestamp.Time(hour, minute) => 
+      val res = StringBuffer()
+      res.append(format(hour)).append(":").append(format(minute))
+      res.toString()
+  private def format(hour: Timestamp.Time.Hour): String = hour.value.toString
+  private def format(minute: Timestamp.Time.Minute): String = "%02d".format(minute.value)
+
+  private def format(planning: Planning): String =
+    planning match
+      case Planning.Scheduled(timestamp, maybeSpacingBegoreKeyword, maybeSpacingBeforeTimestamp, maybeSpacingAfterTimestamp) => 
+        val res = StringBuffer()
+        maybeSpacingBegoreKeyword.foreach(x => res.append(format(x)))
+        res.append("SCHEDULED:")
+        maybeSpacingBeforeTimestamp.foreach(x => res.append(format(x)))
+        res.append(format(timestamp))
+        maybeSpacingAfterTimestamp.foreach(x => res.append(format(x)))
+        res.toString()
+      case x => throw new Exception(s"Unsupported planning: $x")
+  private def format(headingLevel: Heading.Level): String = headingLevel match
+    case Heading.Level(value, spacingAfter) => "#" * value + format(spacingAfter)
+
   private def format(spacing: Spacing): String = spacing.value
   private def format(indentation: Indentation): String = indentation.value
   private def format(propertyDrawer: PropertyDrawer): String = propertyDrawer.nodes.map {
@@ -103,10 +175,14 @@ object formatter:
   }
     .mkString("\n")
   private def format(item: MarkdownList.Item): String = item match
-    // case MarkdownList.Item(content, marker, Some(spacingAfterMarker)) =>
-    //   s"${marker}${format(spacingAfterMarker)}${content.map(format).mkString("\n")}"
-    // case MarkdownList.Item(content, marker, None) =>
-    //   s"${marker}${content.map(format).mkString("\n")}"
-    case x => throw new Exception(s"Unsupported list item: $x")
+    case MarkdownList.Item(content, marker) =>      format(marker) + formatBlockElements(content)
+  private def format(priority: Priority): String = priority match
+    case Priority(value, spacingAfter) => s"#$value${formatMaybeSpacing(spacingAfter)}"
+  
+  private def format(status: Status): String = status match
+    case Status(value, spacingAfter) => s"$value${formatMaybeSpacing(spacingAfter)}"
+
+  private def format(marker: MarkdownList.Item.Marker): String = marker match
+    case MarkdownList.Item.Marker(value, spacingAfter) => value + format(spacingAfter)
 
 end formatter

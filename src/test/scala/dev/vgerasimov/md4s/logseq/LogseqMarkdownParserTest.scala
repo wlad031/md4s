@@ -254,7 +254,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                       level = Heading.Level(value = 1),
                       content = Some(InlineContainer(List(Text("done heading with priority")))),
                       status = Some(Status("DONE", spacingAfter = Some(Spacing(" ")))),
-                      priority = Some(Priority('A'))
+                      priority = Some(Priority('A', spacingAfter = Some(Spacing(" "))))
                     ),
                     content = List()
                   )
@@ -609,7 +609,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                         classicInternalLink("Cinema City")
                       )
                     ),
-                    status = Some(Status("DONE")),
+                    status = Some(Status("DONE", spacingAfter = Some(Spacing(" ")))),
                     planning = List(
                       Planning.Scheduled(
                         spacingBeforeKeyword = Some(Spacing("  ")),
