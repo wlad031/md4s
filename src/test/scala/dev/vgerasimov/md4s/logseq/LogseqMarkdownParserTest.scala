@@ -703,6 +703,42 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
+  test("paragraph (no indentations) with property drawer and custom properties is parseable") {
+    val toParse = """
+|paragraph text
+|k1:: v1
+|k2:: v2
+|:CUSTOM:
+|here just a text
+|:END:
+""".trim().stripMargin
+    checkParser(
+      parser.document,
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          Paragraph(
+            content = InlineContainer(List(Text("paragraph text"))),
+            propertyDrawer = Some(
+              PropertyDrawer(
+                List(
+                  PropertyDrawer.Node("k1", Some(InlineContainer(List(Text("v1"))))),
+                  PropertyDrawer.Node("k2", Some(InlineContainer(List(Text("v2"))))
+                  )
+                )
+              )
+            ),
+            customProperties = Some(
+              CustomProperties(
+                name = "CUSTOM", value = "\nhere just a text\n"
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
   lazy val ctx = Context.defaultCtx
   lazy val parser = new parser(ctx)
 

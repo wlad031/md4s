@@ -149,7 +149,7 @@ class parser(ctx: Context = Context.defaultCtx):
       Status(v, s)
     }
 
-  private def propertyDrawer: P[PropertyDrawer] = {
+  private def propertyDrawer: P[PropertyDrawer] =
     def nodePropertyName: P[String] = until(P("::") | eol).!
     def nodePropertyValue: P[InlineContainer] = inlineContainer
     def nodeProperty: P[PropertyDrawer.Node] =
@@ -163,9 +163,13 @@ class parser(ctx: Context = Context.defaultCtx):
         PropertyDrawer.Node(name, value, beforeNameSpacing, beforeValueSpacing)
       }
 
-    nodeProperty.+.map(_.toList)
-      .map(PropertyDrawer.apply)
-  }
+    nodeProperty.+.map(_.toList).map(PropertyDrawer.apply)
+
+  private def customProperties: P[CustomProperties] =
+    def endBlock: P[Unit] = P(":END:")
+    ((P(":") ~ !endBlock ~ alpha.+.! ~ P(":")) ~ (!endBlock ~ anyChar).*.! ~ endBlock).map {
+      case (name, value) => CustomProperties(name, value)
+    }
 
   private def orderedListMarker: P[String] = (d.+ ~ P(".")).!
   private def listMarker: P[MarkdownList.Item.Marker] =
@@ -206,11 +210,12 @@ class parser(ctx: Context = Context.defaultCtx):
     !((s0 ~ listMarker) | (s0 ~ P("#").+ ~ s1))
     ~ (indentation(min =
       minIndentation
-    ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer ~ propertyDrawer.? ~ planning.*).map {
-      case (ind, priority, status, content, drawer, planning) =>
+    ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer ~ propertyDrawer.? ~ customProperties.? ~ planning.*).map {
+      case (ind, priority, status, content, drawer, maybeCustomProperties, planning) =>
         Paragraph(
           content = content,
           propertyDrawer = drawer,
+          customProperties = maybeCustomProperties,
           indentation = Some(ind),
           planning = planning,
           priority = priority,

@@ -57,6 +57,8 @@ object models:
       spacingBeforeValue: Option[Spacing] = Some(Spacing(" "))
     )
 
+  case class CustomProperties(name: String, value: String)
+
   sealed trait Planning:
     def timestamp: Timestamp
   object Planning:
@@ -114,6 +116,7 @@ private[logseq] object blockElements:
   case class Paragraph(
     content: InlineContainer = InlineContainer.empty,
     propertyDrawer: Option[PropertyDrawer] = None,
+    customProperties: Option[CustomProperties] = None,
     planning: List[Planning] = Nil,
     status: Option[Status] = None,
     priority: Option[Priority] = None,

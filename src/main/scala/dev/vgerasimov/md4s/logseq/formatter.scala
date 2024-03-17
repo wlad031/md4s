@@ -57,7 +57,7 @@ object formatter:
     case x => throw new Exception(s"Unsupported inline element: $x")
 
   def format(blockElement: BlockElement): String = blockElement match
-    case Paragraph(content, maybePropertyDrawer, planning, maybeStatus, maybePriority, maybeIndentation) =>
+    case Paragraph(content, maybePropertyDrawer, maybeCustomProperties, planning, maybeStatus, maybePriority, maybeIndentation) =>
       val res = StringBuffer()
       maybeIndentation.foreach(x => res.append(format(x)))
       maybePriority.foreach(x => res.append(format(x)))
