@@ -53,6 +53,11 @@ object parser:
 
   private case class IntentationSymbol(value: String)
 
+  private def maybeIndentation(indentation: Indentation): Option[Indentation] = indentation match
+    case Indentation(0, _)  => None
+    case Indentation(_, "") => None
+    case x                  => Some(x)
+
 import parser.*
 
 class parser(ctx: Context = Context.defaultCtx):
@@ -221,6 +226,24 @@ class parser(ctx: Context = Context.defaultCtx):
         (!(eol | surrounder) ~ anyChar.!).+.mkString.? ~ eol ~ (!surrounder ~ anyChar.!).+.mkString
     ).map { case (lang, content) => CodeBlock(content, lang) }
 
+  private def beginEndBlock: P[BeginEndBlock] =
+    def beginBlock: P[String] = P("#+BEGIN_") ~ alpha.+.!.map(_.mkString)
+    def endBlock(name: String): P[String] = P("#+END_") ~ P(name).!
+    (indentation() ~ beginBlock.flatMap { name => {
+      println(name)
+      (!endBlock(name) ~ anyChar).*.! ~ endBlock(name)
+    }
+    }).map {
+      case (indentation, (content, "QUERY")) =>
+        BeginEndBlock.LogseqQuery(content = content, indentation = maybeIndentation(indentation))
+      case (indentation, (content, name)) =>
+        BeginEndBlock.Custom(
+          content = content,
+          name = name,
+          indentation = maybeIndentation(indentation)
+        )
+    }
+
   private def blockElement(
     minIndentation: Int,
     headingMinLevel: Int = 1,
@@ -234,8 +257,9 @@ class parser(ctx: Context = Context.defaultCtx):
         list(listMinLevel, listMaxLevel, minIndentation),
         headedSection(headingMinLevel, headingMaxLevel, minIndentation, listMinLevel),
         codeBlock,
+        beginEndBlock,
+        table,
         paragraph(minIndentation),
-        table
       )
 
   private def link: P[Link] =

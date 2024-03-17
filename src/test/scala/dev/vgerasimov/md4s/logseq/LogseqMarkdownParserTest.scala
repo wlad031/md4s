@@ -660,6 +660,49 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
+  test("Logseq query block is parseable") {
+    val toParse = """
+|#+BEGIN_QUERY
+|{:title "Movies with rating 5"
+| :query [:find (pull ?b [*])
+|         :where
+|         [?b :movie/rating 5]]}
+|#+END_QUERY""".strip().stripMargin
+    checkParser(
+      parser.document,
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          BeginEndBlock.LogseqQuery(
+            content =
+              "\n{:title \"Movies with rating 5\"\n :query [:find (pull ?b [*])\n         :where\n         [?b :movie/rating 5]]}\n"
+          )
+        )
+      )
+    )
+  }
+
+  test("Custom valid begin-end block is parseable") {
+    val toParse = """
+|#+BEGIN_FOO
+|#+BEGIN_kek
+|foo bar baz
+|#+END_kek
+|#+END_FOO""".strip().stripMargin
+    checkParser(
+      parser.document,
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          BeginEndBlock.Custom(
+            content = "\n#+BEGIN_kek\nfoo bar baz\n#+END_kek\n",
+            name = "FOO"
+          )
+        )
+      )
+    )
+  }
+
   lazy val ctx = Context.defaultCtx
   lazy val parser = new parser(ctx)
 

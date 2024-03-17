@@ -148,9 +148,32 @@ private[logseq] object blockElements:
   case class Blockquote(content: List[BlockElement]) extends BlockElement
 
   case class CodeBlock(
-    codeText: String,
-    language: Option[String] = None
+    content: String,
+    metadata: Option[String] = None
   ) extends BlockElement
+
+  sealed trait BeginEndBlock extends BlockElement with MaybeIndentable:
+    def name: String
+    def content: String
+  object BeginEndBlock:
+    case class LogseqQuery(
+      override val content: String,
+      override val indentation: Option[Indentation] = None
+    ) extends BeginEndBlock:
+      override val name: String = "QUERY"
+    case class Custom(
+      override val content: String,
+      override val name: String,
+      override val indentation: Option[Indentation] = None
+    ) extends BeginEndBlock
+
+  // And such blocks
+  // Look list properties, I guess
+  // Client should be able to pass a parser to parse the content
+  // :CUSTOM_PROPS:
+  // foo: bar
+  // or even just text
+  // :END:
 
   case class HorizontalRuler() extends BlockElement
 
