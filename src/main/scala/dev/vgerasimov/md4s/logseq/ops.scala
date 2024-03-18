@@ -54,7 +54,7 @@ object ops:
   def listItem(content: InlineElement, marker: String): MarkdownList.Item =
     MarkdownList.Item(
       List(Paragraph(InlineContainer(List(content)))),
-      MarkdownList.Item.Marker(marker, spacingAfter = Spacing.defaultSpacing),
+      MarkdownList.Item.Marker(marker, spacingAfter = Spacing.defaultSpacing)
     )
 
   def listItem(content: String, marker: String): MarkdownList.Item = listItem(Text(content), marker)
@@ -62,8 +62,8 @@ object ops:
   def classicInternalLink(
     page: String,
     text: Option[String] = None
-  ): Link.ClassicInternalLink =
-    Link.ClassicInternalLink(Link.Location.Internal.Page(page), text.map(Text.apply))
+  ): Link.Internal.Classic =
+    Link.Internal.Classic(Link.Location.Internal.Page(page), text)
 
   def h(
     content: String,

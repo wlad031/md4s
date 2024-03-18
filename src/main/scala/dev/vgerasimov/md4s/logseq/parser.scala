@@ -65,19 +65,17 @@ class parser(ctx: Context = Context.defaultCtx):
   def document: P[LogseqMarkdown] = evalAndLazyThen(delayedDocument)
 
   def delayedDocument: AndLazyThen[Option[PropertyDrawer], LogseqMarkdown] =
-    mapAndLazyThen(andLazyThen(propertyDrawer.?, (blockElement(minIndentation = 0).* ~ end))) {
+    mapAndLazyThen(andLazyThen(propertyDrawer.?, (blockElement(minIndentation = 0).*))) {
       case (properties, blocks) => LogseqMarkdown(blocks = blocks, propertyDrawer = properties)
     }
 
-  def spacing: P[Spacing] = (tab | space).+.!.map(Spacing.apply)
+  private def spacing: P[Spacing] = (tab | space).+.!.map(Spacing.apply)
+  private def doubleSpace: P[String] = (space ~ space).!
 
   private def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =
-    (
-      (tab | (space ~ space)).!.map(IntentationSymbol.apply)
-        .rep(min = min, max = max)
-        ~ !(tab | space)
-    )
-      .map(v => Indentation(v.size, v.map(_.value).mkString))
+    val c: P[String] = (tab | doubleSpace).!
+    (c.map(IntentationSymbol.apply).rep(min = min, max = max) ~ !c)
+      .map(sym => Indentation(sym.size, sym.map(_.value).mkString))
 
   private def inlineContainerWithoutEmphasis: P[InlineContainer] =
     (choice(timestamp, link, (!eol ~ singleCharText)).+).map(_.toList)
@@ -100,17 +98,23 @@ class parser(ctx: Context = Context.defaultCtx):
       fail[HeadedSection]
     else
       &(indentation(min = minIndentation) ~ heading(headingMinLevel, headingMaxLevel)).flatMap {
-        case (preI, preH) =>
+        case (preIndentation, preHeading) =>
           (
             indentation(min = minIndentation)
             ~ heading(headingMinLevel, headingMaxLevel)
             ~ blockElement(
               listMinLevel = listMinLevel,
-              headingMinLevel = preH.level.value + 1,
+              headingMinLevel = preHeading.level.value + 1,
               headingMaxLevel = headingMaxLevel,
               minIndentation = minIndentation
             ).*
-          ).map { case (i, h, c) => HeadedSection(heading = h, content = c, indentation = Some(i)) }
+          ).map { case (indentation, heading, content) =>
+            HeadedSection(
+              heading = heading,
+              content = content,
+              indentation = maybeIndentation(indentation)
+            )
+          }
       }
 
   private def heading(headingMinLevel: Int, headingMaxLevel: Int): P[Heading] =
@@ -201,7 +205,7 @@ class parser(ctx: Context = Context.defaultCtx):
         })
           .rep(min = 1)
           .map { items =>
-            MarkdownList.Unordered(items = items, indentation = Some(preIndentation))
+            MarkdownList.Unordered(items = items, indentation = maybeIndentation(preIndentation))
           }
       }
 
@@ -234,10 +238,8 @@ class parser(ctx: Context = Context.defaultCtx):
   private def beginEndBlock: P[BeginEndBlock] =
     def beginBlock: P[String] = P("#+BEGIN_") ~ alpha.+.!.map(_.mkString)
     def endBlock(name: String): P[String] = P("#+END_") ~ P(name).!
-    (indentation() ~ beginBlock.flatMap { name => {
-      println(name)
+    (indentation() ~ beginBlock.flatMap { name =>
       (!endBlock(name) ~ anyChar).*.! ~ endBlock(name)
-    }
     }).map {
       case (indentation, (content, "QUERY")) =>
         BeginEndBlock.LogseqQuery(content = content, indentation = maybeIndentation(indentation))
@@ -264,21 +266,22 @@ class parser(ctx: Context = Context.defaultCtx):
         codeBlock,
         beginEndBlock,
         table,
-        paragraph(minIndentation),
+        paragraph(minIndentation)
       )
 
   private def link: P[Link] =
     import Link.*
 
-    def tag: P[TagInternalLink] =
-      (
-        P("#") ~ !s1 ~ alphaNum.+.!
-          | P("#[[") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map { case (first, next) =>
-            first + next
-          } ~ P("]]")
-      )
-        .map(Location.Internal.Page.apply)
-        .map(TagInternalLink.apply)
+    def tag: P[Internal.Tag] =
+      def withBrackets =
+        (P("#[[") ~ !P("[") ~ (!(P("]]") | eolOrEnd) ~ anyChar).+.! ~ (P("]]") | &(eolOrEnd)))
+          .map(Location.Internal.Page.apply)
+          .map(Internal.Tag.WithBrackets.apply)
+      def withoutBrackets =
+        (P("#") ~ (!(ws | eolOrEnd) ~ anyChar).+.! ~ &(ws | eolOrEnd))
+          .map(Location.Internal.Page.apply)
+          .map(Internal.Tag.WithoutBrackets.apply)
+      choice(withBrackets, withoutBrackets)
 
     def page: P[Location.Internal.Page] =
       (
@@ -297,18 +300,21 @@ class parser(ctx: Context = Context.defaultCtx):
 
     def internalLocation: P[Location.Internal] = page | block
 
-    def text: P[Text] =
-      (P("[") ~ !P("[") ~ (!(P(
-        "]"
-      ) | eolOrEnd) ~ singleCharText.!).+.mkString ~ P("]") ~ !P("]"))
-        .map(Text.apply)
+    def text: P[String] =
+      P("[") ~ !P("[") ~ (!(P("]") | eolOrEnd) ~ anyChar).+.! ~ P("]")
 
     def internalLink: P[Internal] =
-      tag | (text.? ~ internalLocation).map { case (text, location) =>
-        ClassicInternalLink(location, text)
-      }
+      def withText: P[Internal] =
+        (text ~ P("(") ~ internalLocation ~ P(")")).map { case (text, location) =>
+          Internal.Classic(location, Some(text))
+        }
+      def withoutText: P[Internal] =
+        internalLocation.map { location =>
+          Internal.Classic(location, None)
+        }
+      choice(tag, withoutText, withText)
 
-    def externalLink: P[ExternalLink] =
+    def externalLink: P[External] =
       (
         text
           ~ (
@@ -316,7 +322,7 @@ class parser(ctx: Context = Context.defaultCtx):
             ~ (!(P(")") | eolOrEnd) ~ singleCharText.!).+.mkString
             ~ P(")")
           ).map(Location.External.apply)
-      ).map { case (text, location) => ExternalLink(location, Some(text)) }
+      ).map { case (text, location) => External(location, Some(text)) }
 
     internalLink | externalLink
 

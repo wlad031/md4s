@@ -39,9 +39,7 @@ object models:
   trait Indentable:
     def indentation: Indentation = Indentation.defaultIndentation
   trait MaybeIndentable:
-    def indentation: Option[Indentation] = Some(
-      Indentation.defaultIndentation
-    ) // TODO: It should be rather None
+    def indentation: Option[Indentation] = None
 
   case class Status(value: String, override val spacingAfter: Option[Spacing] = None)
       extends MaybeRightSpaced
@@ -92,9 +90,7 @@ private[logseq] object blockElements:
   case class HeadedSection(
     heading: Heading,
     content: List[BlockElement] = Nil,
-    override val indentation: Option[Indentation] = Some(
-      Indentation.defaultIndentation
-    ) // TODO: It should be rather None
+    override val indentation: Option[Indentation] = None
   ) extends BlockElement
       with MaybeIndentable
 
@@ -103,12 +99,8 @@ private[logseq] object blockElements:
     content: Option[InlineContainer] = None,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
-    propertyDrawer: Option[PropertyDrawer] = None,
-    override val indentation: Option[Indentation] = Some(
-      Indentation.defaultIndentation
-    ) // TODO: It should be rather None
+    propertyDrawer: Option[PropertyDrawer] = None
   ) extends BlockElement
-      with MaybeIndentable
   object Heading:
     case class Level(value: Int, override val spacingAfter: Spacing = Spacing.defaultSpacing)
         extends RightSpaced
@@ -130,15 +122,11 @@ private[logseq] object blockElements:
   object MarkdownList:
     case class Ordered(
       items: List[Item] = Nil,
-      override val indentation: Option[Indentation] = Some(
-        Indentation.defaultIndentation
-      ) // TODO: It should be rather None
+      override val indentation: Option[Indentation] = None
     ) extends MarkdownList
     case class Unordered(
       items: List[Item] = Nil,
-      override val indentation: Option[Indentation] = Some(
-        Indentation.defaultIndentation
-      ) // TODO: It should be rather None
+      override val indentation: Option[Indentation] = None
     ) extends MarkdownList
     case class Item(
       content: List[BlockElement],
@@ -170,21 +158,11 @@ private[logseq] object blockElements:
       override val indentation: Option[Indentation] = None
     ) extends BeginEndBlock
 
-  // And such blocks
-  // Look list properties, I guess
-  // Client should be able to pass a parser to parse the content
-  // :CUSTOM_PROPS:
-  // foo: bar
-  // or even just text
-  // :END:
-
-  case class HorizontalRuler() extends BlockElement
+  case class HorizontalRuler(value: String = "---") extends BlockElement with MaybeIndentable
 
   case class Table(
     rows: List[Table.Row],
-    override val indentation: Option[Indentation] = Some(
-      Indentation.defaultIndentation
-    ) // TODO: It should be rather None
+    override val indentation: Option[Indentation] = None
   ) extends BlockElement
       with MaybeIndentable
 
@@ -225,16 +203,26 @@ private[logseq] object inlineElements:
 
   sealed trait Link extends InlineElement
   object Link:
-    sealed trait Internal extends Link
-    case class ClassicInternalLink(
-      location: Link.Location.Internal,
-      text: Option[Text]
-    ) extends Internal
 
-    case class TagInternalLink(location: Location.Internal.Page) extends Internal
-    case class ExternalLink(
+    sealed trait Internal extends Link
+    object Internal:
+
+      case class Classic(
+        location: Link.Location.Internal,
+        text: Option[String] = None
+      ) extends Internal
+
+      sealed trait Tag extends Internal:
+        def location: Location.Internal.Page
+      object Tag:
+        case class WithBrackets(override val location: Location.Internal.Page) extends Tag
+        case class WithoutBrackets(override val location: Location.Internal.Page) extends Tag
+
+    end Internal
+
+    case class External(
       location: Location.External,
-      text: Option[Text]
+      text: Option[String] = None
     ) extends Link
 
     sealed trait Location
