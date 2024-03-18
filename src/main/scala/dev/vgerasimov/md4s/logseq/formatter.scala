@@ -44,7 +44,7 @@ object formatter:
       import Link.*
       def formatInternalLink(link: Link.Internal): String =
         import Internal.*
-        link match 
+        link match
           case Classic(Location.Internal.Page(page), None) =>
             s"[[${page}]]"
           case Classic(Location.Internal.Page(page), Some(text)) =>
@@ -57,7 +57,7 @@ object formatter:
           case Tag.WithoutBrackets(Location.Internal.Page(page)) => s"#${page}"
       def formatExternalLink(link: Link.External): String =
         link match
-          case External(Location.External(location), Some(text))          => s"[${text}](${location})"
+          case External(Location.External(location), Some(text)) => s"[${text}](${location})"
           case External(Location.External(location), None) =>
             throw new Exception("External link without text is not supported")
       link match
@@ -189,30 +189,31 @@ object formatter:
 
   private def format(spacing: Spacing): String = spacing.value
   private def format(indentation: Indentation): String = indentation.value
-  private def format(propertyDrawer: PropertyDrawer): String = propertyDrawer.nodes.map {
-    // FIXME: This should be much shorter
-    case PropertyDrawer.Node(
-          name,
-          Some(value),
-          Some(beforeNameSpacing),
-          Some(beforeValueSpacing)
-        ) =>
-      s"${format(beforeNameSpacing)}$name::${format(beforeValueSpacing)}${format(value)}"
-    case PropertyDrawer.Node(name, Some(value), None, Some(beforeValueSpacing)) =>
-      s"$name::${format(beforeValueSpacing)}${format(value)}"
-    case PropertyDrawer.Node(name, Some(value), Some(beforeNameSpacing), None) =>
-      s"${format(beforeNameSpacing)}$name::${format(value)}"
-    case PropertyDrawer.Node(name, Some(value), None, None) =>
-      s"$name::${format(value)}"
-    case PropertyDrawer.Node(name, None, Some(beforeNameSpacing), Some(beforeValueSpacing)) =>
-      s"${format(beforeNameSpacing)}$name::${format(beforeValueSpacing)}"
-    case PropertyDrawer.Node(name, None, None, Some(beforeValueSpacing)) =>
-      s"$name::${format(beforeValueSpacing)}"
-    case PropertyDrawer.Node(name, None, Some(beforeNameSpacing), None) =>
-      s"${format(beforeNameSpacing)}$name::"
-    case PropertyDrawer.Node(name, None, None, None) =>
-      s"$name::"
-  }
+  private def format(propertyDrawer: PropertyDrawer): String = propertyDrawer.nodes
+    .map {
+      // FIXME: This should be much shorter
+      case PropertyDrawer.Node(
+            name,
+            Some(value),
+            Some(beforeNameSpacing),
+            Some(beforeValueSpacing)
+          ) =>
+        s"${format(beforeNameSpacing)}$name::${format(beforeValueSpacing)}${format(value)}"
+      case PropertyDrawer.Node(name, Some(value), None, Some(beforeValueSpacing)) =>
+        s"$name::${format(beforeValueSpacing)}${format(value)}"
+      case PropertyDrawer.Node(name, Some(value), Some(beforeNameSpacing), None) =>
+        s"${format(beforeNameSpacing)}$name::${format(value)}"
+      case PropertyDrawer.Node(name, Some(value), None, None) =>
+        s"$name::${format(value)}"
+      case PropertyDrawer.Node(name, None, Some(beforeNameSpacing), Some(beforeValueSpacing)) =>
+        s"${format(beforeNameSpacing)}$name::${format(beforeValueSpacing)}"
+      case PropertyDrawer.Node(name, None, None, Some(beforeValueSpacing)) =>
+        s"$name::${format(beforeValueSpacing)}"
+      case PropertyDrawer.Node(name, None, Some(beforeNameSpacing), None) =>
+        s"${format(beforeNameSpacing)}$name::"
+      case PropertyDrawer.Node(name, None, None, None) =>
+        s"$name::"
+    }
     .mkString("\n")
   private def format(item: MarkdownList.Item): String = item match
     case MarkdownList.Item(content, marker) => format(marker) + formatBlockElements(content)

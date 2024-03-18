@@ -153,7 +153,7 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
     val toFormat = HeadedSection(
       Heading(
         level = Heading.Level(value = 1),
-        content = Some(InlineContainer(List(Text("Hello, world!")))),
+        content = Some(InlineContainer(List(Text("Hello, world!"))))
       ),
       List(
         Paragraph(

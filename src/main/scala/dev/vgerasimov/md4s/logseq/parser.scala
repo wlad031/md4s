@@ -65,7 +65,7 @@ class parser(ctx: Context = Context.defaultCtx):
   def document: P[LogseqMarkdown] = evalAndLazyThen(delayedDocument)
 
   def delayedDocument: AndLazyThen[Option[PropertyDrawer], LogseqMarkdown] =
-    mapAndLazyThen(andLazyThen(propertyDrawer.?, (blockElement(minIndentation = 0).*))) {
+    mapAndLazyThen(andLazyThen(propertyDrawer.?, blockElement(minIndentation = 0).*)) {
       case (properties, blocks) => LogseqMarkdown(blocks = blocks, propertyDrawer = properties)
     }
 
@@ -78,12 +78,12 @@ class parser(ctx: Context = Context.defaultCtx):
       .map(sym => Indentation(sym.size, sym.map(_.value).mkString))
 
   private def inlineContainerWithoutEmphasis: P[InlineContainer] =
-    (choice(timestamp, link, (!eol ~ singleCharText)).+).map(_.toList)
+    choice(timestamp, link, !eol ~ singleCharText).+.map(_.toList)
       .map(foldTexts[InlineElement])
       .map(InlineContainer.apply)
 
   private def inlineContainer: P[InlineContainer] =
-    (choice(timestamp, link, emphasis, (!eol ~ singleCharText)).* ~ eolOrEnd)
+    (choice(timestamp, link, emphasis, !eol ~ singleCharText).* ~ eolOrEnd)
       .map(_.toList)
       .map(foldTexts[InlineElement])
       .map(InlineContainer.apply)
@@ -101,13 +101,13 @@ class parser(ctx: Context = Context.defaultCtx):
         case (preIndentation, preHeading) =>
           (
             indentation(min = minIndentation)
-            ~ heading(headingMinLevel, headingMaxLevel)
-            ~ blockElement(
-              listMinLevel = listMinLevel,
-              headingMinLevel = preHeading.level.value + 1,
-              headingMaxLevel = headingMaxLevel,
-              minIndentation = minIndentation
-            ).*
+              ~ heading(headingMinLevel, headingMaxLevel)
+              ~ blockElement(
+                listMinLevel = listMinLevel,
+                headingMinLevel = preHeading.level.value + 1,
+                headingMaxLevel = headingMaxLevel,
+                minIndentation = minIndentation
+              ).*
           ).map { case (indentation, heading, content) =>
             HeadedSection(
               heading = heading,
@@ -127,22 +127,23 @@ class parser(ctx: Context = Context.defaultCtx):
           Heading.Level(value = value, spacingAfter = spacing)
         }
 
-      (!listMarker ~ level ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?).map {
-        case (
-              level: Heading.Level,
-              priority: Option[Priority],
-              status: Option[Status],
-              content: Option[InlineContainer],
-              drawer: Option[PropertyDrawer]
-            ) =>
-          Heading(
-            content = content,
-            level = level,
-            status = status,
-            priority = priority,
-            propertyDrawer = drawer
-          )
-      }
+      (!listMarker ~ level ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?)
+        .map {
+          case (
+                level: Heading.Level,
+                priority: Option[Priority],
+                status: Option[Status],
+                content: Option[InlineContainer],
+                drawer: Option[PropertyDrawer]
+              ) =>
+            Heading(
+              content = content,
+              level = level,
+              status = status,
+              priority = priority,
+              propertyDrawer = drawer
+            )
+        }
 
   private def priority: P[Priority] =
     (((P("[#") ~ fromRange("A-Z").! ~ P("]"))
@@ -191,18 +192,18 @@ class parser(ctx: Context = Context.defaultCtx):
     else
       &(indentation(min = listMinLevel) ~ listMarker).flatMap { case (preIndentation, preMarker) =>
         (indentation(min = listMinLevel).!!
-        ~ listMarker.!!
-        ~ (
-          blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).?
-          ~ blockElement(
-            minIndentation = preIndentation.level + 1,
-            listMinLevel = listMinLevel + 1
-          ).*
-        ).map {
-          case (Some(first), next) =>
-            MarkdownList.Item(first :: next, preMarker)
-          case (None, next) => MarkdownList.Item(next, preMarker)
-        })
+          ~ listMarker.!!
+          ~ (
+            blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).?
+              ~ blockElement(
+                minIndentation = preIndentation.level + 1,
+                listMinLevel = listMinLevel + 1
+              ).*
+          ).map {
+            case (Some(first), next) =>
+              MarkdownList.Item(first :: next, preMarker)
+            case (None, next) => MarkdownList.Item(next, preMarker)
+          })
           .rep(min = 1)
           .map { items =>
             MarkdownList.Unordered(items = items, indentation = maybeIndentation(preIndentation))
@@ -212,20 +213,20 @@ class parser(ctx: Context = Context.defaultCtx):
   // TODO: Make !_conditions better
   private def paragraph(minIndentation: Int): P[Paragraph] =
     !((s0 ~ listMarker) | (s0 ~ P("#").+ ~ s1))
-    ~ (indentation(min =
-      minIndentation
-    ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer ~ propertyDrawer.? ~ customProperties.? ~ planning.*).map {
-      case (ind, priority, status, content, drawer, maybeCustomProperties, planning) =>
-        Paragraph(
-          content = content,
-          propertyDrawer = drawer,
-          customProperties = maybeCustomProperties,
-          indentation = Some(ind),
-          planning = planning,
-          priority = priority,
-          status = status
-        )
-    }
+      ~ (indentation(min =
+        minIndentation
+      ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer ~ propertyDrawer.? ~ customProperties.? ~ planning.*)
+        .map { case (ind, priority, status, content, drawer, maybeCustomProperties, planning) =>
+          Paragraph(
+            content = content,
+            propertyDrawer = drawer,
+            customProperties = maybeCustomProperties,
+            indentation = Some(ind),
+            planning = planning,
+            priority = priority,
+            status = status
+          )
+        }
 
   private def codeBlock: P[CodeBlock] =
     def surrounder = P("```")
@@ -319,8 +320,8 @@ class parser(ctx: Context = Context.defaultCtx):
         text
           ~ (
             P("(")
-            ~ (!(P(")") | eolOrEnd) ~ singleCharText.!).+.mkString
-            ~ P(")")
+              ~ (!(P(")") | eolOrEnd) ~ singleCharText.!).+.mkString
+              ~ P(")")
           ).map(Location.External.apply)
       ).map { case (text, location) => External(location, Some(text)) }
 
@@ -380,7 +381,7 @@ class parser(ctx: Context = Context.defaultCtx):
 
     def cells: P[Cells] =
       (P("|") ~ cell ~ (P("|") ~ cell).rep() ~ P("|").?.!!).map {
-        case (first: Cell, rest: List[Cell]) => Cells((first :: rest.toList))
+        case (first: Cell, rest: List[Cell]) => Cells(first :: rest.toList)
       }
 
     def row: P[Row] = s0 ~ (separator | cells)
@@ -474,10 +475,10 @@ class parser(ctx: Context = Context.defaultCtx):
     def repeaterMark: P[(RepeaterOrDelay.Value, RepeaterOrDelay.Unit) => RepeaterOrDelay] =
       (
         P("++").map(_ => RepeaterOrDelay.CatchUpRepeater.apply)
-        | P("+").map(_ => RepeaterOrDelay.CumulateRepeater.apply)
-        | P(".+").map(_ => RepeaterOrDelay.RestartRepeater.apply)
-        | P("--").map(_ => RepeaterOrDelay.FirstTypeDelay.apply)
-        | P("-").map(_ => RepeaterOrDelay.AllTypeDelay.apply)
+          | P("+").map(_ => RepeaterOrDelay.CumulateRepeater.apply)
+          | P(".+").map(_ => RepeaterOrDelay.RestartRepeater.apply)
+          | P("--").map(_ => RepeaterOrDelay.FirstTypeDelay.apply)
+          | P("-").map(_ => RepeaterOrDelay.AllTypeDelay.apply)
       )
 
     def repeatervalue: P[RepeaterOrDelay.Value] =
@@ -525,18 +526,18 @@ class parser(ctx: Context = Context.defaultCtx):
           .!! ~ activeTimestamp).map { case (from: ActiveTimestamp, to: ActiveTimestamp) =>
           ActiveTimestampRange(from, to)
         }
-        | P(
-          P(
-            "<"
-          ) ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P(
-            ">"
-          )
-        ).map { case (d, t1, t2, r) =>
-          ActiveTimestampRange(
-            ActiveTimestamp(d, Some(t1), r),
-            ActiveTimestamp(d, Some(t2), r)
-          )
-        }
+          | P(
+            P(
+              "<"
+            ) ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P(
+              ">"
+            )
+          ).map { case (d, t1, t2, r) =>
+            ActiveTimestampRange(
+              ActiveTimestamp(d, Some(t1), r),
+              ActiveTimestamp(d, Some(t2), r)
+            )
+          }
       )
 
     def inactiveTimestampRange: P[InactiveTimestampRange] =
@@ -546,17 +547,17 @@ class parser(ctx: Context = Context.defaultCtx):
           .!! ~ inactiveTimestamp).map { case (from: InactiveTimestamp, to: InactiveTimestamp) =>
           InactiveTimestampRange(from, to)
         }
-        |
-        (P(
-          "["
-        ) ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P(
-          "]"
-        )).map { case (d, t1, t2, r) =>
-          InactiveTimestampRange(
-            InactiveTimestamp(d, Some(t1), r),
-            InactiveTimestamp(d, Some(t2), r)
-          )
-        }
+          |
+            (P(
+              "["
+            ) ~ date ~ s ~ time ~ s ~ time ~ (s ~ repeaterOrDelay).? ~ P(
+              "]"
+            )).map { case (d, t1, t2, r) =>
+              InactiveTimestampRange(
+                InactiveTimestamp(d, Some(t1), r),
+                InactiveTimestamp(d, Some(t2), r)
+              )
+            }
       )
 
     (
@@ -585,15 +586,15 @@ class parser(ctx: Context = Context.defaultCtx):
         .map(v => Emphasis(marker, v))
     def bold: P[Emphasis] =
       nonNestable(P("**"), P("*"), Emphasis.Marker.Bold("**"))
-      | nonNestable(P("__"), P("_"), Emphasis.Marker.Bold("__"))
+        | nonNestable(P("__"), P("_"), Emphasis.Marker.Bold("__"))
     def code: P[Emphasis] =
       nonNestable(P("`"), P("`"), Emphasis.Marker.Code("`"))
     def italic: P[Emphasis] =
       nonNestable(P("*"), P("*"), Emphasis.Marker.Italic("*"))
-      | nonNestable(P("_"), P("_"), Emphasis.Marker.Italic("_"))
+        | nonNestable(P("_"), P("_"), Emphasis.Marker.Italic("_"))
     def highlight: P[Emphasis] =
       nonNestable(P("^^"), P("^"), Emphasis.Marker.Italic("^^"))
-      | nonNestable(P("=="), P("="), Emphasis.Marker.Italic("=="))
+        | nonNestable(P("=="), P("="), Emphasis.Marker.Italic("=="))
     def strikeThrough: P[Emphasis] =
       nonNestable(P("~~"), P("~"), Emphasis.Marker.Code("~~"))
 
