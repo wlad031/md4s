@@ -6,7 +6,6 @@ import dev.vgerasimov.slowparse.{ P, POut }
 import models.*
 import ops.{ *, given }
 import parser.*
-import dev.vgerasimov.md4s.logseq.elements.ElementsContainer
 
 class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 
@@ -315,7 +314,43 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
+  test("just property drawer") {
+    import PropertyDrawer.*
+    import Node.*
+    val toParse = "k1:: v1\nk2:: v2\nk3::\nk4:: #tag1, #tag2"
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(),
+        propertyDrawer = Some(
+          PropertyDrawer(
+            List(
+              Node(Key("k1"), Value(ElementsContainer(List(Text("v1"))))),
+              Node(Key("k2"), Value(ElementsContainer(List(Text("v2"))))),
+              Node(Key("k3", spacingAfter = None), Value(ElementsContainer(List()))),
+              Node(
+                Key("k4"),
+                Value(
+                  ElementsContainer(
+                    List(
+                      Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag1")),
+                      Text(", "),
+                      Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag2"))
+                    )
+                  )
+                ),
+                indentation = None
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
   test("lists with headings") {
+    import PropertyDrawer.*
+    import Node.*
     val toParse = """
 |- # Heading 1
 |- # Heading 2
@@ -383,17 +418,15 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                       propertyDrawer = Some(
                         PropertyDrawer(
                           List(
-                            PropertyDrawer.Node(
-                              "k1",
-                              Some(ElementsContainer(List(Text("v1")))),
-                              spacingBeforeName = Some(Spacing("  ")),
-                              spacingBeforeValue = Some(Spacing(" "))
+                            Node(
+                              Key("k1"),
+                              Value(ElementsContainer(List(Text("v1")))),
+                              indentation = Some(Indentation(1, "  "))
                             ),
-                            PropertyDrawer.Node(
-                              "k2",
-                              Some(ElementsContainer(List(Text("v2")))),
-                              spacingBeforeName = Some(Spacing("  ")),
-                              spacingBeforeValue = Some(Spacing(" "))
+                            Node(
+                              Key("k2"),
+                              Value(ElementsContainer(List(Text("v2")))),
+                              indentation = Some(Indentation(1, "  "))
                             )
                           )
                         )
@@ -592,6 +625,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
   }
 
   test("document with properties") {
+    import PropertyDrawer.*
+    import Node.*
     val toParse = """
 |k1:: v1
 |k2:: v2
@@ -610,7 +645,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               1,
               propertyDrawer = Some(
                 PropertyDrawer(
-                  List(PropertyDrawer.Node("k3", Some(ElementsContainer(List(Text("v3"))))))
+                  List(Node(Key("k3"), Value(ElementsContainer(List(Text("v3"))))))
                 )
               )
             ),
@@ -621,7 +656,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   2,
                   propertyDrawer = Some(
                     PropertyDrawer(
-                      List(PropertyDrawer.Node("k4", Some(ElementsContainer(List(Text("v4"))))))
+                      List(Node(Key("k4"), Value(ElementsContainer(List(Text("v4"))))))
                     )
                   )
                 ),
@@ -635,8 +670,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
         propertyDrawer = Some(
           PropertyDrawer(
             List(
-              PropertyDrawer.Node("k1", Some(ElementsContainer(List(Text("v1"))))),
-              PropertyDrawer.Node("k2", Some(ElementsContainer(List(Text("v2")))))
+              Node(Key("k1"), Value(ElementsContainer(List(Text("v1"))))),
+              Node(Key("k2"), Value(ElementsContainer(List(Text("v2")))))
             )
           )
         )
@@ -645,6 +680,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
   }
 
   test("Some more or less complex document is parsed correctly") {
+    import PropertyDrawer.*
+    import Node.*
     val toParse = """
 |  type:: [[Media/Movie]]
 |  author:: [[Кристофер Нолан]]
@@ -670,35 +707,35 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
         propertyDrawer = Some(
           PropertyDrawer(
             List(
-              PropertyDrawer.Node(
-                "type",
-                Some(ElementsContainer(List(classicInternalLink("Media/Movie")))),
-                spacingBeforeName = Some(Spacing("  "))
+              Node(
+                Key("type"),
+                Value(ElementsContainer(List(classicInternalLink("Media/Movie")))),
+                indentation = Some(Indentation(1, "  "))
               ),
-              PropertyDrawer.Node(
-                "author",
-                Some(ElementsContainer(List(classicInternalLink("Кристофер Нолан")))),
-                spacingBeforeName = Some(Spacing("  "))
+              Node(
+                Key("author"),
+                Value(ElementsContainer(List(classicInternalLink("Кристофер Нолан")))),
+                indentation = Some(Indentation(1, "  "))
               ),
-              PropertyDrawer.Node(
-                "status",
-                Some(ElementsContainer(List(classicInternalLink("DONE")))),
-                spacingBeforeName = Some(Spacing("  "))
+              Node(
+                Key("status"),
+                Value(ElementsContainer(List(classicInternalLink("DONE")))),
+                indentation = Some(Indentation(1, "  "))
               ),
-              PropertyDrawer.Node(
-                "alias",
-                Some(ElementsContainer(List(Text("Oppenheimer")))),
-                spacingBeforeName = Some(Spacing("  "))
+              Node(
+                Key("alias"),
+                Value(ElementsContainer(List(Text("Oppenheimer")))),
+                indentation = Some(Indentation(1, "  "))
               ),
-              PropertyDrawer.Node(
-                "rating",
-                Some(ElementsContainer(List(Text("5")))),
-                spacingBeforeName = Some(Spacing("  "))
+              Node(
+                Key("rating"),
+                Value(ElementsContainer(List(Text("5")))),
+                indentation = Some(Indentation(1, "  "))
               ),
-              PropertyDrawer.Node(
-                "done-date",
-                Some(ElementsContainer(List(classicInternalLink("2023-07-29")))),
-                spacingBeforeName = Some(Spacing("  "))
+              Node(
+                Key("done-date"),
+                Value(ElementsContainer(List(classicInternalLink("2023-07-29")))),
+                indentation = Some(Indentation(1, "  "))
               )
             )
           )
@@ -810,6 +847,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
   }
 
   test("paragraph (no indentations) with property drawer and custom properties is parseable") {
+    import PropertyDrawer.*
+    import Node.*
     val toParse = """
 |paragraph text
 |k1:: v1
@@ -827,8 +866,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
             propertyDrawer = Some(
               PropertyDrawer(
                 List(
-                  PropertyDrawer.Node("k1", Some(ElementsContainer(List(Text("v1"))))),
-                  PropertyDrawer.Node("k2", Some(ElementsContainer(List(Text("v2")))))
+                  Node(Key("k1"), Value(ElementsContainer(List(Text("v1"))))),
+                  Node(Key("k2"), Value(ElementsContainer(List(Text("v2")))))
                 )
               )
             ),
@@ -888,6 +927,89 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 List(
                   Cell(ElementsContainer(List(Text("row 1")))),
                   Cell(ElementsContainer(List(Text("row 1"))))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("list with table - two rows - incorrect indentation - is not correctly parseable") {
+    import dev.vgerasimov.md4s.logseq.models.Table.*
+    import dev.vgerasimov.md4s.logseq.models.Table.Row.*
+    val toParse = """- |header|header 1|
+|row 1|row 1|"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          MarkdownList.Unordered(items =
+            List(
+              MarkdownList.Item(
+                marker = MarkdownList.Item.Marker(value = "-"),
+                content = List(
+                  Table(rows =
+                    List(
+                      Cells(
+                        List(
+                          Cell(ElementsContainer(List(Text("header")))),
+                          Cell(ElementsContainer(List(Text("header 1"))))
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          ),
+          Table(rows =
+            List(
+              Cells(
+                List(
+                  Cell(ElementsContainer(List(Text("row 1")))),
+                  Cell(ElementsContainer(List(Text("row 1"))))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("list with table - two rows - is parseable") {
+    import dev.vgerasimov.md4s.logseq.models.Table.*
+    import dev.vgerasimov.md4s.logseq.models.Table.Row.*
+    val toParse = """- |header|header 1|
+  |row 1|row 1|"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(blocks =
+        List(
+          MarkdownList.Unordered(items =
+            List(
+              MarkdownList.Item(
+                marker = MarkdownList.Item.Marker(value = "-"),
+                content = List(
+                  Table(rows =
+                    List(
+                      Cells(
+                        List(
+                          Cell(ElementsContainer(List(Text("header")))),
+                          Cell(ElementsContainer(List(Text("header 1"))))
+                        )
+                      ),
+                      Cells(
+                        List(
+                          Cell(ElementsContainer(List(Text("row 1")))),
+                          Cell(ElementsContainer(List(Text("row 1"))))
+                        ),
+                        indentation = Some(Indentation(1, "  "))
+                      )
+                    )
+                  )
                 )
               )
             )
@@ -977,7 +1099,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   Cell(ElementsContainer(List(Text("header 1"))))
                 )
               ),
-              Separator,
+              Separator("|--|--|"),
               Cells(
                 List(
                   Cell(ElementsContainer(List(Text("row 1")))),
@@ -1015,7 +1137,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
     }
 
-  def checkParserFailed[T](parser: P[T], toParse: String): Unit =
+  def checkParserFailed[T](toParse: String, parser: P[T] = parser.document): Unit =
     parse(toParse, parser) match {
       case POut.Success(value, _, _, _) => fail(s"$toParse parsed to $value")
       case _                            =>

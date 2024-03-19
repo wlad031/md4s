@@ -25,15 +25,13 @@ object formatter:
     concatWithLineBreak(blocks, format)
   private def formatInlineElements(elements: List[Element]): String =
     concatWith(elements, format, "")
-  private def formatMaybePropertyDrawer(maybePropertyDrawer: Option[PropertyDrawer]): String =
-    formatMaybeOrEmpty(maybePropertyDrawer, format)
   private def formatMaybeSpacing(maybeSpacing: Option[Spacing]): String =
     formatMaybeOrEmpty(maybeSpacing, format)
 
   def format(document: LogseqMarkdown): String = document match
     case LogseqMarkdown(maybePropertyDrawer, blocks) =>
       val res = StringBuffer()
-      maybePropertyDrawer.foreach(x => res.append(format(x)))
+      maybePropertyDrawer.foreach(x => res.append(formatProperyDrawer(x)))
       if (blocks.nonEmpty)
         if (!res.isEmpty()) res.append("\n")
         res.append(formatBlockElements(blocks))
@@ -72,6 +70,22 @@ object formatter:
       case link: Link => formatLink(link)
       case x          => throw new Exception(s"Unsupported inline element: $x")
 
+  private def formatTable(table: Table): String = {
+    import Table.*
+    import Row.*
+
+    def formatCell(cell: Cell): String = s"${format(cell.content)}"
+    def formatCells(cells: Cells): String = cells match
+      case Cells(cells, maybeIndentation) =>
+        maybeIndentation.map(format).getOrElse("") + cells.map(formatCell).mkString("|", "|", "|")
+
+    def formatRow(row: Row): String = row match
+      case Separator(value, maybeIndentation) => maybeIndentation.map(format).getOrElse("") + value
+      case cells: Cells                       => formatCells(cells)
+
+    table.rows.map(formatRow).mkString("\n")
+  }
+
   def format(block: Block): String = block match
     case Paragraph(
           content,
@@ -89,7 +103,7 @@ object formatter:
       if (content.elements.nonEmpty)
         // if (!res.isEmpty()) res.append("\n")
         res.append(format(content))
-      maybePropertyDrawer.foreach(x => res.append("\n").append(format(x)))
+      maybePropertyDrawer.foreach(x => res.append("\n").append(formatProperyDrawer(x)))
       if (planning.nonEmpty)
         res.append("\n")
         planning.foreach(x => res.append(format(x)))
@@ -100,7 +114,7 @@ object formatter:
       maybePriority.foreach(x => res.append(format(x)))
       maybeStatus.foreach(x => res.append(format(x)))
       maybeContent.foreach(x => res.append(format(x)))
-      maybePropertyDrawer.foreach(x => res.append(format(x)))
+      maybePropertyDrawer.foreach(x => res.append(formatProperyDrawer(x)))
       res.toString()
     case HeadedSection(heading, content, maybeIndentation) =>
       val res = StringBuffer()
@@ -111,7 +125,8 @@ object formatter:
     case MarkdownList.Unordered(items, maybeIndentation) =>
       val indentation = maybeIndentation.map(format).getOrElse("")
       items.map(x => indentation + format(x)).mkString("\n")
-    case x => throw new Exception(s"Unsupported block element: $x")
+    case t: Table => formatTable(t)
+    case x        => throw new Exception(s"Unsupported block element: $x")
 
   private def format(timestamp: Timestamp): String =
     import Timestamp.*
@@ -189,32 +204,26 @@ object formatter:
 
   private def format(spacing: Spacing): String = spacing.value
   private def format(indentation: Indentation): String = indentation.value
-  private def format(propertyDrawer: PropertyDrawer): String = propertyDrawer.nodes
-    .map {
-      // FIXME: This should be much shorter
-      case PropertyDrawer.Node(
-            name,
-            Some(value),
-            Some(beforeNameSpacing),
-            Some(beforeValueSpacing)
-          ) =>
-        s"${format(beforeNameSpacing)}$name::${format(beforeValueSpacing)}${format(value)}"
-      case PropertyDrawer.Node(name, Some(value), None, Some(beforeValueSpacing)) =>
-        s"$name::${format(beforeValueSpacing)}${format(value)}"
-      case PropertyDrawer.Node(name, Some(value), Some(beforeNameSpacing), None) =>
-        s"${format(beforeNameSpacing)}$name::${format(value)}"
-      case PropertyDrawer.Node(name, Some(value), None, None) =>
-        s"$name::${format(value)}"
-      case PropertyDrawer.Node(name, None, Some(beforeNameSpacing), Some(beforeValueSpacing)) =>
-        s"${format(beforeNameSpacing)}$name::${format(beforeValueSpacing)}"
-      case PropertyDrawer.Node(name, None, None, Some(beforeValueSpacing)) =>
-        s"$name::${format(beforeValueSpacing)}"
-      case PropertyDrawer.Node(name, None, Some(beforeNameSpacing), None) =>
-        s"${format(beforeNameSpacing)}$name::"
-      case PropertyDrawer.Node(name, None, None, None) =>
-        s"$name::"
+  private def formatProperyDrawer(propertyDrawer: PropertyDrawer): String = {
+    import PropertyDrawer.*
+
+    def formatNode(node: Node): String = {
+      import Node.*
+
+      def formatKey(key: Key): String = key match
+        case Key(value, maybeSpacingAfter) =>
+          s"$value::${maybeSpacingAfter.map(format).getOrElse("")}"
+
+      def formatValue(value: Value): String = value match
+        case Value(value) => format(value)
+
+      node match
+        case Node(key, value, maybeIndentation) =>
+          maybeIndentation.map(format).getOrElse("") + formatKey(key) + formatValue(value)
     }
-    .mkString("\n")
+
+    propertyDrawer.nodes.map(formatNode).mkString("\n")
+  }
   private def format(item: MarkdownList.Item): String = item match
     case MarkdownList.Item(content, marker) => format(marker) + formatBlockElements(content)
   private def format(priority: Priority): String = priority match

@@ -2,6 +2,7 @@ package dev.vgerasimov.md4s
 package logseq
 
 import dev.vgerasimov.md4s.models.*
+import dev.vgerasimov.md4s.logseq.elements.Timestamp.RepeaterOrDelay.Value
 
 object models:
   import blocks.*
@@ -45,11 +46,16 @@ object models:
   case class PropertyDrawer(nodes: List[PropertyDrawer.Node])
   object PropertyDrawer:
     case class Node(
-      name: String,
-      value: Option[ElementsContainer] = None,
-      spacingBeforeName: Option[Spacing] = None,
-      spacingBeforeValue: Option[Spacing] = Some(Spacing(" "))
-    )
+      key: Node.Key,
+      value: Node.Value,
+      override val indentation: Option[Indentation] = None
+    ) extends MaybeIndentable
+    object Node:
+      case class Key(
+        value: String,
+        override val spacingAfter: Option[Spacing] = Some(Spacing(" "))
+      ) extends MaybeRightSpaced
+      case class Value(value: ElementsContainer)
 
   case class CustomProperties(name: String, value: String)
 
@@ -157,16 +163,16 @@ private[logseq] object blocks:
   case class HorizontalRuler(value: String = "---") extends Block with MaybeIndentable
 
   case class Table(
-    rows: List[Table.Row],
-    override val indentation: Option[Indentation] = None
+    rows: List[Table.Row]
   ) extends Block
-      with MaybeIndentable
 
   object Table:
-    sealed trait Row
+    sealed trait Row extends MaybeIndentable
     object Row:
-      case object Separator extends Row
-      case class Cells(cells: List[Cell]) extends Row
+      case class Separator(value: String, override val indentation: Option[Indentation] = None)
+          extends Row
+      case class Cells(cells: List[Cell], override val indentation: Option[Indentation] = None)
+          extends Row
     case class Cell(content: ElementsContainer)
 
 end blocks

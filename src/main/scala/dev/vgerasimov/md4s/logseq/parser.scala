@@ -154,21 +154,26 @@ class parser(ctx: Context = Context.defaultCtx):
       Status(v, s)
     }
 
-  private def propertyDrawer: P[PropertyDrawer] =
-    def nodePropertyName: P[String] = until(P("::") | eol).!
-    def nodePropertyValue: P[ElementsContainer] = elementsContainer
-    def nodeProperty: P[PropertyDrawer.Node] =
-      (
-        spacing.?
-          ~ nodePropertyName
-          ~ P("::")
-          ~ spacing.?
-          ~ nodePropertyValue.?
-      ).map { case (beforeNameSpacing, name, beforeValueSpacing, value) =>
-        PropertyDrawer.Node(name, value, beforeNameSpacing, beforeValueSpacing)
-      }
+  private def propertyDrawer: P[PropertyDrawer] = {
+    import PropertyDrawer.*
 
-    nodeProperty.+.map(_.toList).map(PropertyDrawer.apply)
+    def node: P[Node] = {
+      import Node.*
+
+      def key: P[Key] =
+        (until(P("::") | eol).! ~ P("::") ~ spacing.?)
+          .map { case (value, maybeSpacing) => Key(value, maybeSpacing) }
+      def value: P[Value] = elementsContainer.map(Value.apply)
+
+      // There is no ~ eolOrEnd becase value uses elementsContainer and it already has eolOrEnd
+      (indentation(min = 0) ~ key ~ value)
+        .map { case (indentation, key, value) =>
+          Node(key = key, value = value, indentation = maybeIndentation(indentation))
+        }
+    }
+
+    node.+.map(_.toList).map(PropertyDrawer.apply)
+  }
 
   private def customProperties: P[CustomProperties] =
     def endBlock: P[Unit] = P(":END:")
@@ -266,8 +271,8 @@ class parser(ctx: Context = Context.defaultCtx):
         headedSection(headingMinLevel, headingMaxLevel, minIndentation, listMinLevel),
         codeBlock,
         beginEndBlock,
-        table,
-        paragraph(minIndentation)
+        table(minIndentation = minIndentation, currentListIndentation = listMinLevel),
+        paragraph(minIndentation = minIndentation)
       )
 
   private def link: P[Link] = {
@@ -287,10 +292,9 @@ class parser(ctx: Context = Context.defaultCtx):
             .map(WithBrackets.apply)
 
         def withoutBrackets: P[WithoutBrackets] = {
-          // P("|") here is for the case when tag is inside a table cell.
-          def stop: P[Unit] = ws | eolOrEnd | P("|")
+          def stop: P[Unit] = !alphaNum
 
-          (P("#") ~ !stop ~ until(stop).! ~ &(stop))
+          (P("#") ~ !stop ~ until(stop, collector = alphaNum).! ~ &(stop))
             .map(Location.Internal.Page.apply)
             .map(WithoutBrackets.apply)
         }
@@ -376,15 +380,26 @@ class parser(ctx: Context = Context.defaultCtx):
 
     closed | deadline | scheduled
 
-  private def table: P[Table] = {
+  private def table(
+    minIndentation: Int = 0,
+    maxIndentation: Int = Int.MaxValue,
+    currentListIndentation: Int = 0
+  ): P[Table] = {
     import Table.*
 
-    def row: P[Row] = {
+    def row(minIndentation: Int = 0, maxIndentation: Int = Int.MaxValue): P[Row] = {
       import Row.*
 
-      def separator: P[Separator.type] = (P("|-") ~ (P("|") | P("-")).*).map(_ => Separator)
+      def separator(minIndentation: Int = 0, maxIndentation: Int = Int.MaxValue): P[Separator] =
+        (
+          indentation(min = minIndentation, max = maxIndentation)
+            ~ (P("|-") ~ (P("|") | P("-")).*).!
+        )
+          .map { case (indentation, value) =>
+            Separator(value = value, indentation = maybeIndentation(indentation))
+          }
 
-      def cells: P[Cells] = {
+      def cells(minIndentation: Int = 0, maxIndentation: Int = Int.MaxValue): P[Cells] = {
         def cell: P[Cell] = {
           def elementsContainer: P[ElementsContainer] =
             choice(timestamp, link, emphasis, !(P("|") | eol) ~ singleCharText).*.map(_.toList)
@@ -393,13 +408,26 @@ class parser(ctx: Context = Context.defaultCtx):
           (elementsContainer ~ &(P("|"))).map(Cell.apply)
         }
 
-        (P("|") ~ (cell ~ P("|")).*).map(Cells.apply)
+        (indentation(min = minIndentation, max = maxIndentation) ~ (P("|") ~ (cell ~ P("|")).*))
+          .map { case (indentation, cells) =>
+            Cells(cells = cells, indentation = maybeIndentation(indentation))
+          }
       }
 
-      (separator | cells) ~ eolOrEnd
+      (
+        separator(minIndentation = minIndentation, maxIndentation = maxIndentation)
+          | cells(minIndentation = minIndentation, maxIndentation = maxIndentation)
+      )
+      ~ eolOrEnd
     }
 
-    row.+.map(rows => Table(rows = rows))
+    (
+      row(minIndentation = minIndentation, maxIndentation = maxIndentation)
+        ~ row(minIndentation = minIndentation + currentListIndentation).*
+    )
+      .map { case (first, next) =>
+        Table(rows = first :: next)
+      }
   }
 
   private def timestamp: P[Timestamp] = {

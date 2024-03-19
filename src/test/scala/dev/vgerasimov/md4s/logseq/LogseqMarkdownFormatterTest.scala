@@ -89,12 +89,14 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   }
 
   test("Simple text paragraph with properties is formatted as correctly") {
+    import PropertyDrawer.*
+    import Node.*
     val toFormat =
       Paragraph(
         ElementsContainer(List(Text("Hello, world!"))),
         propertyDrawer = Some(
           PropertyDrawer(
-            List(PropertyDrawer.Node("PROPERTY", Some(ElementsContainer(List(Text("VALUE"))))))
+            List(Node(Key("PROPERTY"), Value(ElementsContainer(List(Text("VALUE"))))))
           )
         )
       )
@@ -103,6 +105,8 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   }
 
   test("Simple text paragraph with multiple properties and indentation is formatted as correctly") {
+    import PropertyDrawer.*
+    import Node.*
     val toFormat =
       Paragraph(
         ElementsContainer(List(Text("Hello, world!"))),
@@ -110,10 +114,10 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
         propertyDrawer = Some(
           PropertyDrawer(
             List(
-              PropertyDrawer.Node("PROPERTY", Some(ElementsContainer(List(Text("VALUE"))))),
-              PropertyDrawer.Node(
-                "ANOTHER_PROPERTY",
-                Some(ElementsContainer(List(Text("ANOTHER_VALUE"))))
+              Node(Key("PROPERTY"), Value(ElementsContainer(List(Text("VALUE"))))),
+              Node(
+                Key("ANOTHER_PROPERTY"),
+                Value(ElementsContainer(List(Text("ANOTHER_VALUE"))))
               )
             )
           )
@@ -165,6 +169,66 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
       indentation = Some(Indentation(1, "  "))
     )
     val expected = "  # Hello, world!\n  Hello, world!"
+    assertEquals(formatter.format(toFormat), expected)
+  }
+
+  test("Table with different elements is formatted correctly") {
+    import dev.vgerasimov.md4s.logseq.models.Table.*
+    import dev.vgerasimov.md4s.logseq.models.Table.Row.*
+    val toFormat = LogseqMarkdown(blocks =
+      List(
+        Table(rows =
+          List(
+            Cells(
+              List(
+                Cell(ElementsContainer(List(Text("header")))),
+                Cell(ElementsContainer(List(Text("header 1"))))
+              )
+            ),
+            Cells(
+              List(
+                Cell(
+                  ElementsContainer(
+                    List(
+                      Emphasis(Emphasis.Marker.Bold("**"), ElementsContainer(List(Text("row 1"))))
+                    )
+                  )
+                ),
+                Cell(
+                  ElementsContainer(
+                    List(
+                      Emphasis(
+                        Emphasis.Marker.Italic("_"),
+                        ElementsContainer(List(Text("row 1")))
+                      )
+                    )
+                  )
+                )
+              )
+            ),
+            Cells(
+              List(
+                Cell(
+                  ElementsContainer(
+                    List(Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag")))
+                  )
+                ),
+                Cell(
+                  ElementsContainer(
+                    List(
+                      Link.External(Link.Location.External("http://example.com"), Some("link"))
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    val expected = """|header|header 1|
+|**row 1**|_row 1_|
+|#tag|[link](http://example.com)|"""
     assertEquals(formatter.format(toFormat), expected)
   }
 
