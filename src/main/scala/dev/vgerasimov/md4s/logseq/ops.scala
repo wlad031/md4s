@@ -24,7 +24,7 @@ object ops:
       def | (that: Cell): Cells = Cells(List(cell, that))
       def asRow: Cells = Cells(List(cell))
 
-    def $ : String => Cell = content => Cell(InlineContainer(List(Text(content))))
+    def $ : String => Cell = content => Cell(ElementsContainer(List(Text(content))))
     def sep: Separator.type = Separator
 
   private def fold[A >: B, B : ClassTag](
@@ -51,9 +51,9 @@ object ops:
 
   extension (text: Text) def ++ (that: Text): Text = Text(text.content ++ that.content)
 
-  def listItem(content: InlineElement, marker: String): MarkdownList.Item =
+  def listItem(content: Element, marker: String): MarkdownList.Item =
     MarkdownList.Item(
-      List(Paragraph(InlineContainer(List(content)))),
+      List(Paragraph(ElementsContainer(List(content)))),
       MarkdownList.Item.Marker(marker, spacingAfter = Spacing.defaultSpacing)
     )
 
@@ -73,14 +73,14 @@ object ops:
   ): Heading = h(List(Text(content)), level, status, propertyDrawer)
 
   def h(
-    content: List[InlineElement],
+    content: List[Element],
     level: Int,
     status: Option[String],
     propertyDrawer: Option[PropertyDrawer]
   ): Heading =
     Heading(
       Heading.Level(level),
-      Some(InlineContainer(content)),
+      Some(ElementsContainer(content)),
       status = status.map(s => Status(s, spacingAfter = Some(Spacing.defaultSpacing))),
       propertyDrawer = propertyDrawer
     )

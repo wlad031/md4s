@@ -4,19 +4,15 @@ package logseq
 import dev.vgerasimov.md4s.models.*
 
 object models:
-  import blockElements.*
-  import inlineElements.*
+  import blocks.*
+  import elements.*
 
-  export blockElements.*
-  export inlineElements.*
+  export blocks.*
+  export elements.*
 
-  /** A Markdown document can now be constructed by assembling these elements into a hierarchy. For
-    * example, a document might contain a list of block elements where each element corresponds to
-    * items such paragraphs, code blocks, and so on.
-    */
   case class LogseqMarkdown(
     propertyDrawer: Option[PropertyDrawer] = None,
-    blocks: List[BlockElement] = Nil
+    blocks: List[Block] = Nil
   ) extends MarkdownDocument
 
   case class Spacing(value: String = Spacing.defaultSpaceValue)
@@ -50,7 +46,7 @@ object models:
   object PropertyDrawer:
     case class Node(
       name: String,
-      value: Option[InlineContainer] = None,
+      value: Option[ElementsContainer] = None,
       spacingBeforeName: Option[Spacing] = None,
       spacingBeforeValue: Option[Spacing] = Some(Spacing(" "))
     )
@@ -81,32 +77,32 @@ object models:
 
 end models
 
-private[logseq] object blockElements:
+private[logseq] object blocks:
   import models.*
-  import inlineElements.*
+  import elements.*
 
-  sealed trait BlockElement extends MarkdownDocument
+  sealed trait Block extends MarkdownDocument
 
   case class HeadedSection(
     heading: Heading,
-    content: List[BlockElement] = Nil,
+    content: List[Block] = Nil,
     override val indentation: Option[Indentation] = None
-  ) extends BlockElement
+  ) extends Block
       with MaybeIndentable
 
   case class Heading(
     level: Heading.Level,
-    content: Option[InlineContainer] = None,
+    content: Option[ElementsContainer] = None,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
     propertyDrawer: Option[PropertyDrawer] = None
-  ) extends BlockElement
+  ) extends Block
   object Heading:
     case class Level(value: Int, override val spacingAfter: Spacing = Spacing.defaultSpacing)
         extends RightSpaced
 
   case class Paragraph(
-    content: InlineContainer = InlineContainer.empty,
+    content: ElementsContainer = ElementsContainer.empty,
     propertyDrawer: Option[PropertyDrawer] = None,
     customProperties: Option[CustomProperties] = None,
     planning: List[Planning] = Nil,
@@ -115,10 +111,10 @@ private[logseq] object blockElements:
     override val indentation: Option[Indentation] = Some(
       Indentation.defaultIndentation
     ) // TODO: It should be rather None
-  ) extends BlockElement
+  ) extends Block
       with MaybeIndentable
 
-  sealed trait MarkdownList extends BlockElement with MaybeIndentable
+  sealed trait MarkdownList extends Block with MaybeIndentable
   object MarkdownList:
     case class Ordered(
       items: List[Item] = Nil,
@@ -129,21 +125,21 @@ private[logseq] object blockElements:
       override val indentation: Option[Indentation] = None
     ) extends MarkdownList
     case class Item(
-      content: List[BlockElement],
+      content: List[Block],
       marker: Item.Marker
     ) extends RightSpaced
     object Item:
       case class Marker(value: String, override val spacingAfter: Spacing = Spacing.defaultSpacing)
           extends RightSpaced
 
-  case class Blockquote(content: List[BlockElement]) extends BlockElement
+  case class Blockquote(content: List[Block]) extends Block
 
   case class CodeBlock(
     content: String,
     metadata: Option[String] = None
-  ) extends BlockElement
+  ) extends Block
 
-  sealed trait BeginEndBlock extends BlockElement with MaybeIndentable:
+  sealed trait BeginEndBlock extends Block with MaybeIndentable:
     def name: String
     def content: String
   object BeginEndBlock:
@@ -158,12 +154,12 @@ private[logseq] object blockElements:
       override val indentation: Option[Indentation] = None
     ) extends BeginEndBlock
 
-  case class HorizontalRuler(value: String = "---") extends BlockElement with MaybeIndentable
+  case class HorizontalRuler(value: String = "---") extends Block with MaybeIndentable
 
   case class Table(
     rows: List[Table.Row],
     override val indentation: Option[Indentation] = None
-  ) extends BlockElement
+  ) extends Block
       with MaybeIndentable
 
   object Table:
@@ -171,25 +167,25 @@ private[logseq] object blockElements:
     object Row:
       case object Separator extends Row
       case class Cells(cells: List[Cell]) extends Row
-    case class Cell(content: InlineContainer)
+    case class Cell(content: ElementsContainer)
 
-end blockElements
+end blocks
 
-private[logseq] object inlineElements:
-  sealed trait InlineElement
+private[logseq] object elements:
+  sealed trait Element
 
-  case class InlineContainer(
-    elements: List[InlineElement] = Nil
-  ) extends InlineElement
-  object InlineContainer:
-    val empty: InlineContainer = InlineContainer()
+  case class ElementsContainer(
+    elements: List[Element] = Nil
+  ) extends Element
+  object ElementsContainer:
+    val empty: ElementsContainer = ElementsContainer()
 
-  case class Text(content: String) extends InlineElement
+  case class Text(content: String) extends Element
 
   case class Emphasis(
     marker: Emphasis.Marker,
-    contents: InlineContainer
-  ) extends InlineElement
+    contents: ElementsContainer
+  ) extends Element
 
   object Emphasis:
     sealed trait Marker:
@@ -201,7 +197,7 @@ private[logseq] object inlineElements:
       case class Code(override val value: String) extends Marker
       case class Highlight(override val value: String) extends Marker
 
-  sealed trait Link extends InlineElement
+  sealed trait Link extends Element
   object Link:
 
     sealed trait Internal extends Link
@@ -233,14 +229,14 @@ private[logseq] object inlineElements:
         case class Page(value: String) extends Internal
         case class Block(value: String) extends Internal
 
-  case class Image(altText: String, url: String, title: Option[String]) extends InlineElement
+  case class Image(altText: String, url: String, title: Option[String]) extends Element
 
-  sealed trait LineBreak extends InlineElement
+  sealed trait LineBreak extends Element
   object LineBreak:
     case object Softbreak extends LineBreak
     case object Hardbreak extends LineBreak
 
-  sealed trait Timestamp extends InlineElement
+  sealed trait Timestamp extends Element
   object Timestamp:
     sealed trait Active extends Timestamp
     sealed trait Inactive extends Timestamp
@@ -319,4 +315,4 @@ private[logseq] object inlineElements:
         case object Month extends Unit
         case object Year extends Unit
 
-end inlineElements
+end elements

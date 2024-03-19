@@ -21,9 +21,9 @@ object formatter:
   private def concatMaybesWith[A](ls: List[Option[A]], format: A => String, s: => String): String =
     ls.filter(_.isDefined).map(_.get).map(format).mkString(s)
 
-  private def formatBlockElements(blocks: List[BlockElement]): String =
+  private def formatBlockElements(blocks: List[Block]): String =
     concatWithLineBreak(blocks, format)
-  private def formatInlineElements(elements: List[InlineElement]): String =
+  private def formatInlineElements(elements: List[Element]): String =
     concatWith(elements, format, "")
   private def formatMaybePropertyDrawer(maybePropertyDrawer: Option[PropertyDrawer]): String =
     formatMaybeOrEmpty(maybePropertyDrawer, format)
@@ -39,7 +39,7 @@ object formatter:
         res.append(formatBlockElements(blocks))
       res.toString()
 
-  def format(inlineElement: InlineElement): String =
+  def format(element: Element): String =
     def formatLink(link: Link): String =
       import Link.*
       def formatInternalLink(link: Link.Internal): String =
@@ -64,15 +64,15 @@ object formatter:
         case internal: Internal => formatInternalLink(internal)
         case external: External => formatExternalLink(external)
 
-    inlineElement match
-      case InlineContainer(elements) => formatInlineElements(elements)
-      case Text(content)             => content
+    element match
+      case ElementsContainer(elements) => formatInlineElements(elements)
+      case Text(content)               => content
       case Emphasis(marker: Emphasis.Marker, contents) =>
         s"${marker.value}${format(contents)}${marker.value}"
       case link: Link => formatLink(link)
       case x          => throw new Exception(s"Unsupported inline element: $x")
 
-  def format(blockElement: BlockElement): String = blockElement match
+  def format(block: Block): String = block match
     case Paragraph(
           content,
           maybePropertyDrawer,

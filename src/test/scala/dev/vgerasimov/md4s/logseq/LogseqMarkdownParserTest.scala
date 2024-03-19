@@ -16,11 +16,11 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
       LogseqMarkdown(
         blocks = List(
           Paragraph(
-            InlineContainer(
+            ElementsContainer(
               List(
                 Emphasis(
                   Emphasis.Marker.Italic("*"),
-                  InlineContainer(List(Text("hello world")))
+                  ElementsContainer(List(Text("hello world")))
                 )
               )
             )
@@ -37,7 +37,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
       LogseqMarkdown(
         blocks = List(
           Paragraph(content =
-            InlineContainer(elements =
+            ElementsContainer(elements =
               List(
                 Link.Internal.Classic(
                   Link.Location.Internal.Page("page"),
@@ -58,7 +58,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
       LogseqMarkdown(
         blocks = List(
           Paragraph(content =
-            InlineContainer(elements =
+            ElementsContainer(elements =
               List(
                 Link.Internal.Classic(Link.Location.Internal.Page("page"), text = None)
               )
@@ -76,7 +76,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
       LogseqMarkdown(
         blocks = List(
           Paragraph(content =
-            InlineContainer(elements =
+            ElementsContainer(elements =
               List(
                 Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("page")),
                 Text(" "),
@@ -98,7 +98,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
       LogseqMarkdown(
         blocks = List(
           Paragraph(content =
-            InlineContainer(elements =
+            ElementsContainer(elements =
               List(
                 Link.External(Link.Location.External("https://example.com"), Some("label"))
               )
@@ -257,7 +257,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
             List(
               MarkdownList.Item(
                 List(
-                  Paragraph(InlineContainer(List(Text("list item 1")))),
+                  Paragraph(ElementsContainer(List(Text("list item 1")))),
                   MarkdownList.Unordered(
                     indentation = Some(Indentation(1, "  ")),
                     items = List(
@@ -310,7 +310,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   HeadedSection(
                     heading = Heading(
                       level = Heading.Level(value = 1),
-                      content = Some(InlineContainer(List(Text("todo heading")))),
+                      content = Some(ElementsContainer(List(Text("todo heading")))),
                       status = Some(Status("TODO", spacingAfter = Some(Spacing(" "))))
                     ),
                     content = List()
@@ -323,7 +323,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   HeadedSection(
                     heading = Heading(
                       level = Heading.Level(value = 1),
-                      content = Some(InlineContainer(List(Text("done heading with priority")))),
+                      content = Some(ElementsContainer(List(Text("done heading with priority")))),
                       status = Some(Status("DONE", spacingAfter = Some(Spacing(" ")))),
                       priority = Some(Priority('A', spacingAfter = Some(Spacing(" "))))
                     ),
@@ -337,20 +337,21 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   HeadedSection(
                     Heading(
                       level = Heading.Level(value = 1),
-                      content = Some(InlineContainer(List(Text("doing heading with properties")))),
+                      content =
+                        Some(ElementsContainer(List(Text("doing heading with properties")))),
                       status = Some(Status("DOING", spacingAfter = Some(Spacing(" ")))),
                       propertyDrawer = Some(
                         PropertyDrawer(
                           List(
                             PropertyDrawer.Node(
                               "k1",
-                              Some(InlineContainer(List(Text("v1")))),
+                              Some(ElementsContainer(List(Text("v1")))),
                               spacingBeforeName = Some(Spacing("  ")),
                               spacingBeforeValue = Some(Spacing(" "))
                             ),
                             PropertyDrawer.Node(
                               "k2",
-                              Some(InlineContainer(List(Text("v2")))),
+                              Some(ElementsContainer(List(Text("v2")))),
                               spacingBeforeName = Some(Spacing("  ")),
                               spacingBeforeValue = Some(Spacing(" "))
                             )
@@ -368,7 +369,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   HeadedSection(
                     heading = h("last heading", 1),
                     content =
-                      List(Paragraph(InlineContainer(List(Text("and some text, just because")))))
+                      List(Paragraph(ElementsContainer(List(Text("and some text, just because")))))
                   )
                 ),
                 marker = MarkdownList.Item.Marker("-")
@@ -455,7 +456,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 List(
                   MarkdownList.Item(
                     content = List(
-                      Paragraph(InlineContainer(List(Text("list item 1")))),
+                      Paragraph(ElementsContainer(List(Text("list item 1")))),
                       MarkdownList.Unordered(
                         indentation = Some(Indentation(1, "  ")),
                         items = List(
@@ -569,7 +570,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               1,
               propertyDrawer = Some(
                 PropertyDrawer(
-                  List(PropertyDrawer.Node("k3", Some(InlineContainer(List(Text("v3"))))))
+                  List(PropertyDrawer.Node("k3", Some(ElementsContainer(List(Text("v3"))))))
                 )
               )
             ),
@@ -580,12 +581,12 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   2,
                   propertyDrawer = Some(
                     PropertyDrawer(
-                      List(PropertyDrawer.Node("k4", Some(InlineContainer(List(Text("v4"))))))
+                      List(PropertyDrawer.Node("k4", Some(ElementsContainer(List(Text("v4"))))))
                     )
                   )
                 ),
                 content = List(
-                  Paragraph(InlineContainer(List(Text("text"))))
+                  Paragraph(ElementsContainer(List(Text("text"))))
                 )
               )
             )
@@ -594,8 +595,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
         propertyDrawer = Some(
           PropertyDrawer(
             List(
-              PropertyDrawer.Node("k1", Some(InlineContainer(List(Text("v1"))))),
-              PropertyDrawer.Node("k2", Some(InlineContainer(List(Text("v2")))))
+              PropertyDrawer.Node("k1", Some(ElementsContainer(List(Text("v1"))))),
+              PropertyDrawer.Node("k2", Some(ElementsContainer(List(Text("v2")))))
             )
           )
         )
@@ -631,32 +632,32 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
             List(
               PropertyDrawer.Node(
                 "type",
-                Some(InlineContainer(List(classicInternalLink("Media/Movie")))),
+                Some(ElementsContainer(List(classicInternalLink("Media/Movie")))),
                 spacingBeforeName = Some(Spacing("  "))
               ),
               PropertyDrawer.Node(
                 "author",
-                Some(InlineContainer(List(classicInternalLink("Кристофер Нолан")))),
+                Some(ElementsContainer(List(classicInternalLink("Кристофер Нолан")))),
                 spacingBeforeName = Some(Spacing("  "))
               ),
               PropertyDrawer.Node(
                 "status",
-                Some(InlineContainer(List(classicInternalLink("DONE")))),
+                Some(ElementsContainer(List(classicInternalLink("DONE")))),
                 spacingBeforeName = Some(Spacing("  "))
               ),
               PropertyDrawer.Node(
                 "alias",
-                Some(InlineContainer(List(Text("Oppenheimer")))),
+                Some(ElementsContainer(List(Text("Oppenheimer")))),
                 spacingBeforeName = Some(Spacing("  "))
               ),
               PropertyDrawer.Node(
                 "rating",
-                Some(InlineContainer(List(Text("5")))),
+                Some(ElementsContainer(List(Text("5")))),
                 spacingBeforeName = Some(Spacing("  "))
               ),
               PropertyDrawer.Node(
                 "done-date",
-                Some(InlineContainer(List(classicInternalLink("2023-07-29")))),
+                Some(ElementsContainer(List(classicInternalLink("2023-07-29")))),
                 spacingBeforeName = Some(Spacing("  "))
               )
             )
@@ -669,7 +670,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 marker = MarkdownList.Item.Marker("-"),
                 content = List(
                   Paragraph(
-                    content = InlineContainer(
+                    content = ElementsContainer(
                       List(
                         classicInternalLink("Oppenheimer"),
                         Text(" in "),
@@ -782,12 +783,12 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
       LogseqMarkdown(
         blocks = List(
           Paragraph(
-            content = InlineContainer(List(Text("paragraph text"))),
+            content = ElementsContainer(List(Text("paragraph text"))),
             propertyDrawer = Some(
               PropertyDrawer(
                 List(
-                  PropertyDrawer.Node("k1", Some(InlineContainer(List(Text("v1"))))),
-                  PropertyDrawer.Node("k2", Some(InlineContainer(List(Text("v2")))))
+                  PropertyDrawer.Node("k1", Some(ElementsContainer(List(Text("v1"))))),
+                  PropertyDrawer.Node("k2", Some(ElementsContainer(List(Text("v2")))))
                 )
               )
             ),

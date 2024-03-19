@@ -14,43 +14,44 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
 
   test("Bold text is formatted as bold text") {
     val toFormat =
-      Emphasis(Emphasis.Marker.Bold("**"), InlineContainer(List(Text("Hello, world!"))))
+      Emphasis(Emphasis.Marker.Bold("**"), ElementsContainer(List(Text("Hello, world!"))))
     val expected = "**Hello, world!**"
     assertEquals(formatter.format(toFormat), expected)
   }
 
   test("Italic text is formatted as italic text") {
     val toFormat =
-      Emphasis(Emphasis.Marker.Italic("*"), InlineContainer(List(Text("Hello, world!"))))
+      Emphasis(Emphasis.Marker.Italic("*"), ElementsContainer(List(Text("Hello, world!"))))
     val expected = "*Hello, world!*"
     assertEquals(formatter.format(toFormat), expected)
   }
 
   test("Code text is formatted as code text") {
-    val toFormat = Emphasis(Emphasis.Marker.Code("`"), InlineContainer(List(Text("Hello, world!"))))
+    val toFormat =
+      Emphasis(Emphasis.Marker.Code("`"), ElementsContainer(List(Text("Hello, world!"))))
     val expected = "`Hello, world!`"
     assertEquals(formatter.format(toFormat), expected)
   }
 
   test("StrikeThrough text is formatted as strikethrough text") {
     val toFormat =
-      Emphasis(Emphasis.Marker.StrikeThrough("~~"), InlineContainer(List(Text("Hello, world!"))))
+      Emphasis(Emphasis.Marker.StrikeThrough("~~"), ElementsContainer(List(Text("Hello, world!"))))
     val expected = "~~Hello, world!~~"
     assertEquals(formatter.format(toFormat), expected)
   }
 
   test("Highlight text is formatted as highlighted text") {
     val toFormat =
-      Emphasis(Emphasis.Marker.Highlight("=="), InlineContainer(List(Text("Hello, world!"))))
+      Emphasis(Emphasis.Marker.Highlight("=="), ElementsContainer(List(Text("Hello, world!"))))
     val expected = "==Hello, world!=="
     assertEquals(formatter.format(toFormat), expected)
   }
 
   test("Mixed emphasis is formatted correctly 1") {
-    val toFormat = InlineContainer(
+    val toFormat = ElementsContainer(
       List(
         Text("Hello, "),
-        Emphasis(Emphasis.Marker.Bold("**"), InlineContainer(List(Text("world")))),
+        Emphasis(Emphasis.Marker.Bold("**"), ElementsContainer(List(Text("world")))),
         Text("!")
       )
     )
@@ -59,11 +60,11 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   }
 
   test("Mixed emphasis is formatted correctly 2") {
-    val toFormat = InlineContainer(
+    val toFormat = ElementsContainer(
       List(
-        Emphasis(Emphasis.Marker.Bold("**"), InlineContainer(List(Text("Hello")))),
+        Emphasis(Emphasis.Marker.Bold("**"), ElementsContainer(List(Text("Hello")))),
         Text(", "),
-        Emphasis(Emphasis.Marker.Italic("*"), InlineContainer(List(Text("world")))),
+        Emphasis(Emphasis.Marker.Italic("*"), ElementsContainer(List(Text("world")))),
         Text("!")
       )
     )
@@ -72,7 +73,7 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   }
 
   test("Simple text paragraph is formatted as correctly") {
-    val toFormat = Paragraph(InlineContainer(List(Text("Hello, world!"))))
+    val toFormat = Paragraph(ElementsContainer(List(Text("Hello, world!"))))
     val expected = "Hello, world!"
     assertEquals(formatter.format(toFormat), expected)
   }
@@ -80,7 +81,7 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   test("Simple text paragraph with indentation is formatted as correctly") {
     val toFormat =
       Paragraph(
-        InlineContainer(List(Text("Hello, world!"))),
+        ElementsContainer(List(Text("Hello, world!"))),
         indentation = Some(Indentation(1, "  "))
       )
     val expected = "  Hello, world!"
@@ -90,10 +91,10 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   test("Simple text paragraph with properties is formatted as correctly") {
     val toFormat =
       Paragraph(
-        InlineContainer(List(Text("Hello, world!"))),
+        ElementsContainer(List(Text("Hello, world!"))),
         propertyDrawer = Some(
           PropertyDrawer(
-            List(PropertyDrawer.Node("PROPERTY", Some(InlineContainer(List(Text("VALUE"))))))
+            List(PropertyDrawer.Node("PROPERTY", Some(ElementsContainer(List(Text("VALUE"))))))
           )
         )
       )
@@ -104,15 +105,15 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   test("Simple text paragraph with multiple properties and indentation is formatted as correctly") {
     val toFormat =
       Paragraph(
-        InlineContainer(List(Text("Hello, world!"))),
+        ElementsContainer(List(Text("Hello, world!"))),
         indentation = Some(Indentation(2, "\t\t")),
         propertyDrawer = Some(
           PropertyDrawer(
             List(
-              PropertyDrawer.Node("PROPERTY", Some(InlineContainer(List(Text("VALUE"))))),
+              PropertyDrawer.Node("PROPERTY", Some(ElementsContainer(List(Text("VALUE"))))),
               PropertyDrawer.Node(
                 "ANOTHER_PROPERTY",
-                Some(InlineContainer(List(Text("ANOTHER_VALUE"))))
+                Some(ElementsContainer(List(Text("ANOTHER_VALUE"))))
               )
             )
           )
@@ -126,9 +127,9 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
     val toFormat = HeadedSection(
       Heading(
         level = Heading.Level(value = 1),
-        content = Some(InlineContainer(List(Text("Hello, world!"))))
+        content = Some(ElementsContainer(List(Text("Hello, world!"))))
       ),
-      List(Paragraph(InlineContainer(List(Text("Hello, world!")))))
+      List(Paragraph(ElementsContainer(List(Text("Hello, world!")))))
     )
     val expected = "# Hello, world!\nHello, world!"
     assertEquals(formatter.format(toFormat), expected)
@@ -138,11 +139,11 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
     val toFormat = HeadedSection(
       Heading(
         level = Heading.Level(value = 1),
-        content = Some(InlineContainer(List(Text("Hello, world!"))))
+        content = Some(ElementsContainer(List(Text("Hello, world!"))))
       ),
       List(
-        Paragraph(InlineContainer(List(Text("Hello, world!")))),
-        Paragraph(InlineContainer(List(Text("Hello, world!"))))
+        Paragraph(ElementsContainer(List(Text("Hello, world!")))),
+        Paragraph(ElementsContainer(List(Text("Hello, world!"))))
       )
     )
     val expected = "# Hello, world!\nHello, world!\nHello, world!"
@@ -153,11 +154,11 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
     val toFormat = HeadedSection(
       Heading(
         level = Heading.Level(value = 1),
-        content = Some(InlineContainer(List(Text("Hello, world!"))))
+        content = Some(ElementsContainer(List(Text("Hello, world!"))))
       ),
       List(
         Paragraph(
-          InlineContainer(List(Text("Hello, world!"))),
+          ElementsContainer(List(Text("Hello, world!"))),
           indentation = Some(Indentation(1, "  "))
         )
       ),

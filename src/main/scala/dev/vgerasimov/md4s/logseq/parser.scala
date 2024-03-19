@@ -65,7 +65,7 @@ class parser(ctx: Context = Context.defaultCtx):
   def document: P[LogseqMarkdown] = evalAndLazyThen(delayedDocument)
 
   def delayedDocument: AndLazyThen[Option[PropertyDrawer], LogseqMarkdown] =
-    mapAndLazyThen(andLazyThen(propertyDrawer.?, blockElement(minIndentation = 0).*)) {
+    mapAndLazyThen(andLazyThen(propertyDrawer.?, block(minIndentation = 0).*)) {
       case (properties, blocks) => LogseqMarkdown(blocks = blocks, propertyDrawer = properties)
     }
 
@@ -77,16 +77,16 @@ class parser(ctx: Context = Context.defaultCtx):
     (c.map(IntentationSymbol.apply).rep(min = min, max = max) ~ !c)
       .map(sym => Indentation(sym.size, sym.map(_.value).mkString))
 
-  private def inlineContainerWithoutEmphasis: P[InlineContainer] =
+  private def elementsContainerWithoutEmphasis: P[ElementsContainer] =
     choice(timestamp, link, !eol ~ singleCharText).+.map(_.toList)
-      .map(foldTexts[InlineElement])
-      .map(InlineContainer.apply)
+      .map(foldTexts[Element])
+      .map(ElementsContainer.apply)
 
-  private def inlineContainer: P[InlineContainer] =
+  private def elementsContainer: P[ElementsContainer] =
     (choice(timestamp, link, emphasis, !eol ~ singleCharText).* ~ eolOrEnd)
       .map(_.toList)
-      .map(foldTexts[InlineElement])
-      .map(InlineContainer.apply)
+      .map(foldTexts[Element])
+      .map(ElementsContainer.apply)
 
   private def headedSection(
     headingMinLevel: Int,
@@ -102,7 +102,7 @@ class parser(ctx: Context = Context.defaultCtx):
           (
             indentation(min = minIndentation)
               ~ heading(headingMinLevel, headingMaxLevel)
-              ~ blockElement(
+              ~ block(
                 listMinLevel = listMinLevel,
                 headingMinLevel = preHeading.level.value + 1,
                 headingMaxLevel = headingMaxLevel,
@@ -127,13 +127,13 @@ class parser(ctx: Context = Context.defaultCtx):
           Heading.Level(value = value, spacingAfter = spacing)
         }
 
-      (!listMarker ~ level ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer.? ~ propertyDrawer.?)
+      (!listMarker ~ level ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer.? ~ propertyDrawer.?)
         .map {
           case (
                 level: Heading.Level,
                 priority: Option[Priority],
                 status: Option[Status],
-                content: Option[InlineContainer],
+                content: Option[ElementsContainer],
                 drawer: Option[PropertyDrawer]
               ) =>
             Heading(
@@ -156,7 +156,7 @@ class parser(ctx: Context = Context.defaultCtx):
 
   private def propertyDrawer: P[PropertyDrawer] =
     def nodePropertyName: P[String] = until(P("::") | eol).!
-    def nodePropertyValue: P[InlineContainer] = inlineContainer
+    def nodePropertyValue: P[ElementsContainer] = elementsContainer
     def nodeProperty: P[PropertyDrawer.Node] =
       (
         spacing.?
@@ -194,8 +194,8 @@ class parser(ctx: Context = Context.defaultCtx):
         (indentation(min = listMinLevel).!!
           ~ listMarker.!!
           ~ (
-            blockElement(minIndentation = 0, listMinLevel = listMinLevel + 1).?
-              ~ blockElement(
+            block(minIndentation = 0, listMinLevel = listMinLevel + 1).?
+              ~ block(
                 minIndentation = preIndentation.level + 1,
                 listMinLevel = listMinLevel + 1
               ).*
@@ -215,7 +215,7 @@ class parser(ctx: Context = Context.defaultCtx):
     !((s0 ~ listMarker) | (s0 ~ P("#").+ ~ s1))
       ~ (indentation(min =
         minIndentation
-      ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ inlineContainer ~ propertyDrawer.? ~ customProperties.? ~ planning.*)
+      ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer ~ propertyDrawer.? ~ customProperties.? ~ planning.*)
         .map { case (ind, priority, status, content, drawer, maybeCustomProperties, planning) =>
           Paragraph(
             content = content,
@@ -252,14 +252,14 @@ class parser(ctx: Context = Context.defaultCtx):
         )
     }
 
-  private def blockElement(
+  private def block(
     minIndentation: Int,
     headingMinLevel: Int = 1,
     headingMaxLevel: Int = 6,
     listMinLevel: Int = 0,
     listMaxLevel: Int = ctx.listMaxLevel
-  ): P[BlockElement] =
-    if (minIndentation > 16) fail[BlockElement]
+  ): P[Block] =
+    if (minIndentation > 16) fail[Block]
     else
       choice(
         list(listMinLevel, listMaxLevel, minIndentation),
@@ -377,7 +377,7 @@ class parser(ctx: Context = Context.defaultCtx):
       (P("|-") ~ anyFrom("\\-+|").rep()).map(_ => Separator)
 
     def cell: P[Cell] =
-      charsUntilIn("\n|").map(s => Cell(InlineContainer(List(Text(s.trim)))))
+      charsUntilIn("\n|").map(s => Cell(ElementsContainer(List(Text(s.trim)))))
 
     def cells: P[Cells] =
       (P("|") ~ cell ~ (P("|") ~ cell).rep() ~ P("|").?.!!).map {
@@ -579,10 +579,10 @@ class parser(ctx: Context = Context.defaultCtx):
         surroundingParser = markerParser,
         contentParser = !(s1 | markerFirstCharParser)
           ~ (!(markerParser | eol) ~ singleCharText).+.map(
-            foldTexts[InlineElement]
+            foldTexts[Element]
           )
       )
-        .map(InlineContainer.apply)
+        .map(ElementsContainer.apply)
         .map(v => Emphasis(marker, v))
     def bold: P[Emphasis] =
       nonNestable(P("**"), P("*"), Emphasis.Marker.Bold("**"))
