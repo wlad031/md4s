@@ -285,10 +285,15 @@ class parser(ctx: Context = Context.defaultCtx):
           (P("#[[") ~ !(P("[") | P("]")) ~ until(P("]]")).! ~ P("]]"))
             .map(Location.Internal.Page.apply)
             .map(WithBrackets.apply)
-        def withoutBrackets: P[WithoutBrackets] =
-          (P("#") ~ !(ws | eolOrEnd) ~ until(ws | eolOrEnd).! ~ &(ws | eolOrEnd))
+
+        def withoutBrackets: P[WithoutBrackets] = {
+          // P("|") here is for the case when tag is inside a table cell.
+          def stop: P[Unit] = ws | eolOrEnd | P("|")
+
+          (P("#") ~ !stop ~ until(stop).! ~ &(stop))
             .map(Location.Internal.Page.apply)
             .map(WithoutBrackets.apply)
+        }
 
         withBrackets | withoutBrackets
       }
@@ -373,24 +378,28 @@ class parser(ctx: Context = Context.defaultCtx):
 
   private def table: P[Table] = {
     import Table.*
-    import Table.Row.*
 
-    def separator: P[Separator.type] =
-      (P("|-") ~ anyFrom("\\-+|").rep()).map(_ => Separator)
+    def row: P[Row] = {
+      import Row.*
 
-    def cell: P[Cell] =
-      charsUntilIn("\n|").map(s => Cell(ElementsContainer(List(Text(s.trim)))))
+      def separator: P[Separator.type] = (P("|-") ~ (P("|") | P("-")).*).map(_ => Separator)
 
-    def cells: P[Cells] =
-      (P("|") ~ cell ~ (P("|") ~ cell).rep() ~ P("|").?.!!).map {
-        case (first: Cell, rest: List[Cell]) => Cells(first :: rest.toList)
+      def cells: P[Cells] = {
+        def cell: P[Cell] = {
+          def elementsContainer: P[ElementsContainer] =
+            choice(timestamp, link, emphasis, !(P("|") | eol) ~ singleCharText).*.map(_.toList)
+              .map(foldTexts[Element])
+              .map(ElementsContainer.apply)
+          (elementsContainer ~ &(P("|"))).map(Cell.apply)
+        }
+
+        (P("|") ~ (cell ~ P("|")).*).map(Cells.apply)
       }
 
-    def row: P[Row] = s0 ~ (separator | cells)
-
-    (row ~ eol ~ (row ~ eol).rep()).map { case (firstRow, restRows) =>
-      Table(firstRow :: restRows.toList)
+      (separator | cells) ~ eolOrEnd
     }
+
+    row.+.map(rows => Table(rows = rows))
   }
 
   private def timestamp: P[Timestamp] = {

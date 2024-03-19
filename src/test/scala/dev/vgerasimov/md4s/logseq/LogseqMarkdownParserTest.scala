@@ -6,6 +6,7 @@ import dev.vgerasimov.slowparse.{ P, POut }
 import models.*
 import ops.{ *, given }
 import parser.*
+import dev.vgerasimov.md4s.logseq.elements.ElementsContainer
 
 class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 
@@ -835,6 +836,153 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               CustomProperties(
                 name = "CUSTOM",
                 value = "\nhere just a text\n"
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("table - one row - is parseable") {
+    import dev.vgerasimov.md4s.logseq.models.Table.*
+    import dev.vgerasimov.md4s.logseq.models.Table.Row.*
+    val toParse = """|header|header 1|"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(blocks =
+        List(
+          Table(rows =
+            List(
+              Cells(
+                List(
+                  Cell(ElementsContainer(List(Text("header")))),
+                  Cell(ElementsContainer(List(Text("header 1"))))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("table - two rows - is parseable") {
+    import dev.vgerasimov.md4s.logseq.models.Table.*
+    import dev.vgerasimov.md4s.logseq.models.Table.Row.*
+    val toParse = """|header|header 1|
+|row 1|row 1|"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(blocks =
+        List(
+          Table(rows =
+            List(
+              Cells(
+                List(
+                  Cell(ElementsContainer(List(Text("header")))),
+                  Cell(ElementsContainer(List(Text("header 1"))))
+                )
+              ),
+              Cells(
+                List(
+                  Cell(ElementsContainer(List(Text("row 1")))),
+                  Cell(ElementsContainer(List(Text("row 1"))))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("table - rows with elements - is parseable") {
+    import dev.vgerasimov.md4s.logseq.models.Table.*
+    import dev.vgerasimov.md4s.logseq.models.Table.Row.*
+    val toParse = """|header|header 1|
+|**row 1**|_row 1_|
+|#tag|[link](http://example.com)|"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(blocks =
+        List(
+          Table(rows =
+            List(
+              Cells(
+                List(
+                  Cell(ElementsContainer(List(Text("header")))),
+                  Cell(ElementsContainer(List(Text("header 1"))))
+                )
+              ),
+              Cells(
+                List(
+                  Cell(
+                    ElementsContainer(
+                      List(
+                        Emphasis(Emphasis.Marker.Bold("**"), ElementsContainer(List(Text("row 1"))))
+                      )
+                    )
+                  ),
+                  Cell(
+                    ElementsContainer(
+                      List(
+                        Emphasis(
+                          Emphasis.Marker.Italic("_"),
+                          ElementsContainer(List(Text("row 1")))
+                        )
+                      )
+                    )
+                  )
+                )
+              ),
+              Cells(
+                List(
+                  Cell(
+                    ElementsContainer(
+                      List(Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag")))
+                    )
+                  ),
+                  Cell(
+                    ElementsContainer(
+                      List(
+                        Link.External(Link.Location.External("http://example.com"), Some("link"))
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("table - header, separator, one row - is parseable") {
+    import dev.vgerasimov.md4s.logseq.models.Table.*
+    import dev.vgerasimov.md4s.logseq.models.Table.Row.*
+    val toParse = """|header|header 1|
+|--|--|
+|row 1|row 1|"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(blocks =
+        List(
+          Table(rows =
+            List(
+              Cells(
+                List(
+                  Cell(ElementsContainer(List(Text("header")))),
+                  Cell(ElementsContainer(List(Text("header 1"))))
+                )
+              ),
+              Separator,
+              Cells(
+                List(
+                  Cell(ElementsContainer(List(Text("row 1")))),
+                  Cell(ElementsContainer(List(Text("row 1"))))
+                )
               )
             )
           )
