@@ -30,7 +30,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
-  test("texted internal page link is parsed") {
+  test("labeled internal page link is parsed") {
     val toParse = "[text]([[page]])"
     checkParser(
       toParse,
@@ -41,7 +41,28 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               List(
                 Link.Internal.Classic(
                   Link.Location.Internal.Page("page"),
-                  text = Some("text")
+                  label = Some("text")
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("labeled internal block link is parsed") {
+    val toParse = "[label](((block-id)))"
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          Paragraph(content =
+            ElementsContainer(elements =
+              List(
+                Link.Internal.Classic(
+                  Link.Location.Internal.Block("block-id"),
+                  label = Some("label")
                 )
               )
             )
@@ -60,7 +81,25 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
           Paragraph(content =
             ElementsContainer(elements =
               List(
-                Link.Internal.Classic(Link.Location.Internal.Page("page"), text = None)
+                Link.Internal.Classic(Link.Location.Internal.Page("page"), label = None)
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("simple internal block link is parsed") {
+    val toParse = "((block-id))"
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          Paragraph(content =
+            ElementsContainer(elements =
+              List(
+                Link.Internal.Classic(Link.Location.Internal.Block("block-id"), label = None)
               )
             )
           )
@@ -91,7 +130,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
-  test("external link can be parsed") {
+  test("labeled external link can be parsed") {
     val toParse = "[label](https://example.com)"
     checkParser(
       toParse,

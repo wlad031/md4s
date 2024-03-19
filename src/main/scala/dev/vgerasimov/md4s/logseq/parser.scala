@@ -270,62 +270,64 @@ class parser(ctx: Context = Context.defaultCtx):
         paragraph(minIndentation)
       )
 
-  private def link: P[Link] =
+  private def link: P[Link] = {
     import Link.*
 
-    def tag: P[Internal.Tag] =
-      def withBrackets =
-        (P("#[[") ~ !P("[") ~ (!(P("]]") | eolOrEnd) ~ anyChar).+.! ~ (P("]]") | &(eolOrEnd)))
-          .map(Location.Internal.Page.apply)
-          .map(Internal.Tag.WithBrackets.apply)
-      def withoutBrackets =
-        (P("#") ~ (!(ws | eolOrEnd) ~ anyChar).+.! ~ &(ws | eolOrEnd))
-          .map(Location.Internal.Page.apply)
-          .map(Internal.Tag.WithoutBrackets.apply)
-      choice(withBrackets, withoutBrackets)
+    def label: P[String] = P("[") ~ !(P("[") | P("]")) ~ until(P("]")).! ~ P("]")
 
-    def page: P[Location.Internal.Page] =
-      (
-        P("[[") ~ !(P("]") | s1) ~ (anyChar.! ~ until(P("]]")).!).map { case (first, next) =>
-          first + next
-        } ~ P("]]")
-      ).map(Location.Internal.Page.apply)
+    def internal: P[Internal] = {
+      import Internal.*
 
-    // FIXME: This is a mess, also page and block are not the same
-    def block: P[Location.Internal.Block] =
-      (
-        P("((") ~ !s1 ~ (alphaNum.! ~ until(P("]]")).!).map { case (first, next) =>
-          first + next
-        } ~ P("))")
-      ).map(Location.Internal.Block.apply)
+      def tag: P[Tag] = {
+        import Tag.*
 
-    def internalLocation: P[Location.Internal] = page | block
+        def withBrackets: P[WithBrackets] =
+          (P("#[[") ~ !(P("[") | P("]")) ~ until(P("]]")).! ~ P("]]"))
+            .map(Location.Internal.Page.apply)
+            .map(WithBrackets.apply)
+        def withoutBrackets: P[WithoutBrackets] =
+          (P("#") ~ !(ws | eolOrEnd) ~ until(ws | eolOrEnd).! ~ &(ws | eolOrEnd))
+            .map(Location.Internal.Page.apply)
+            .map(WithoutBrackets.apply)
 
-    def text: P[String] =
-      P("[") ~ !P("[") ~ (!(P("]") | eolOrEnd) ~ anyChar).+.! ~ P("]")
+        withBrackets | withoutBrackets
+      }
 
-    def internalLink: P[Internal] =
-      def withText: P[Internal] =
-        (text ~ P("(") ~ internalLocation ~ P(")")).map { case (text, location) =>
-          Internal.Classic(location, Some(text))
+      def location: P[Location.Internal] = {
+        import Location.Internal.*
+
+        def page: P[Page] =
+          (P("[[") ~ !(P("[") | P("]")) ~ until(P("]]")).! ~ P("]]")).map(Page.apply)
+        def block: P[Block] =
+          (P("((") ~ !(P("(") | P(")")) ~ until(P("))")).! ~ P("))")).map(Block.apply)
+
+        page | block
+      }
+
+      def withLabel: P[Internal] = {
+        (label ~ P("(") ~ location ~ P(")")).map { case (label, location) =>
+          Internal.Classic(location, Some(label))
         }
-      def withoutText: P[Internal] =
-        internalLocation.map { location =>
-          Internal.Classic(location, None)
-        }
-      choice(tag, withoutText, withText)
+      }
+      def withoutLabel: P[Internal] = location.map(Internal.Classic(_, None))
 
-    def externalLink: P[External] =
+      tag | withoutLabel | withLabel
+    }
+
+    // TODO: Refactor
+    // TODO: Add support for not labeled external links
+    def external: P[External] =
       (
-        text
+        label
           ~ (
             P("(")
-              ~ (!(P(")") | eolOrEnd) ~ singleCharText.!).+.mkString
+              ~ (!(P(")") | P("(")) ~ singleCharText.!).+.mkString
               ~ P(")")
           ).map(Location.External.apply)
-      ).map { case (text, location) => External(location, Some(text)) }
+      ).map { case (label, location) => External(location, Some(label)) }
 
-    internalLink | externalLink
+    internal | external
+  }
 
   // TODO: Refactor
   private def planning: P[Planning] =

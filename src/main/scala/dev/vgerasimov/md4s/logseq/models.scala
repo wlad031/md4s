@@ -205,7 +205,7 @@ private[logseq] object elements:
 
       case class Classic(
         location: Link.Location.Internal,
-        text: Option[String] = None
+        label: Option[String] = None
       ) extends Internal
 
       sealed trait Tag extends Internal:
@@ -218,7 +218,7 @@ private[logseq] object elements:
 
     case class External(
       location: Location.External,
-      text: Option[String] = None
+      label: Option[String] = None
     ) extends Link
 
     sealed trait Location
