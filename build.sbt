@@ -30,4 +30,6 @@ val root = project
         "org.scalameta"  %% "munit-scalacheck" % munitVersion % Test
       )
     },
+    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true),
+    publishM2Configuration := publishM2Configuration.value.withOverwrite(true),
   )

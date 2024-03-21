@@ -1,15 +1,18 @@
 {
 	"folders": [
-		{
-			"path": "../slowparse"
-		},
-		{
-			"path": "../org4s"
-		},
-		{
-			"path": "."
-		}
-	],
+    {
+      "path": "../slowparse"
+    },
+    {
+      "path": "../org4s"
+    },
+    {
+      "path": "."
+    },
+    {
+      "path": "../md4j"
+    }
+  ],
   "settings": {
     "files.watcherExclude": {
       "**/target": true
