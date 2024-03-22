@@ -23,8 +23,6 @@ object formatter:
 
   private def formatBlockElements(blocks: List[Block]): String =
     concatWithLineBreak(blocks, format)
-  private def formatInlineElements(elements: List[Element]): String =
-    concatWith(elements, format, "")
   private def formatMaybeSpacing(maybeSpacing: Option[Spacing]): String =
     formatMaybeOrEmpty(maybeSpacing, format)
 
@@ -56,19 +54,17 @@ object formatter:
       def formatExternalLink(link: Link.External): String =
         link match
           case External(Location.External(location), Some(text)) => s"[${text}](${location})"
-          case External(Location.External(location), None) =>
-            throw new Exception("External link without text is not supported")
+          case External(Location.External(location), None)       => location
       link match
         case internal: Internal => formatInternalLink(internal)
         case external: External => formatExternalLink(external)
 
     element match
-      case ElementsContainer(elements) => formatInlineElements(elements)
+      case ElementsContainer(elements) => concatWith(elements, format, "")
       case Text(content)               => content
-      case Emphasis(marker: Emphasis.Marker, contents) =>
-        s"${marker.value}${format(contents)}${marker.value}"
-      case link: Link => formatLink(link)
-      case x          => throw new Exception(s"Unsupported inline element: $x")
+      case Emphasis(marker, contents)  => marker.value + format(contents) + marker.value
+      case link: Link                  => formatLink(link)
+      case x                           => throw new Exception(s"Unsupported inline element: $x")
 
   private def formatTable(table: Table): String = {
     import Table.*

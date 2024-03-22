@@ -16,7 +16,8 @@ object parser:
     headingMinLevel: Int,
     headingMaxLevel: Int,
     commaSeparatedNodeProperties: Set[String],
-    aliasNodeProperty: String
+    aliasNodeProperty: String,
+    knownLinkProtocols: Set[String]
   )
 
   object Context:
@@ -35,6 +36,10 @@ object parser:
         Set("tags", "file", "alias", "id", "created", "modified")
       val aliasNodeProperty: String =
         "alias"
+      val knownLinkProtocols: Set[String] =
+        // If http is first, it will be matched before https, and then
+        // the entire parser will fail. So, the order is important.
+        Set("https", "http", "mailto")
 
     /** Default instance of [[Context]]. */
     val defaultCtx: Context = Context(
@@ -43,7 +48,8 @@ object parser:
       headingMinLevel = default.headingMinLevel,
       headingMaxLevel = default.headingMaxLevel,
       commaSeparatedNodeProperties = default.commaSeparatedNodeProperties,
-      aliasNodeProperty = default.aliasNodeProperty
+      aliasNodeProperty = default.aliasNodeProperty,
+      knownLinkProtocols = default.knownLinkProtocols
     )
 
   end Context
@@ -323,17 +329,21 @@ class parser(ctx: Context = Context.defaultCtx):
       tag | withoutLabel | withLabel
     }
 
-    // TODO: Refactor
-    // TODO: Add support for not labeled external links
-    def external: P[External] =
-      (
-        label
-          ~ (
-            P("(")
-              ~ (!(P(")") | P("(")) ~ singleCharText.!).+.mkString
-              ~ P(")")
-          ).map(Location.External.apply)
-      ).map { case (label, location) => External(location, Some(label)) }
+    def external: P[External] = {
+      def protocol: P[String] = ctx.knownLinkProtocols.map(p => P(p)).reduce(_ | _).!
+      def location: P[Location.External] = 
+        def stop = anyFrom("()[]|") | ws | eolOrEnd
+        (protocol ~ P("://") ~ until(stop).! ~ &(stop))
+          .map { case (p, l) => s"$p://$l" }
+          .map(Location.External.apply)
+      def withoutLabel: P[External] = location.map(External(_, label = None))
+      def withLabel: P[External] =
+        (label ~ P("(") ~ location ~ P(")")).map { case (label, location) =>
+          External(location, label = Some(label))
+        }
+      
+      withLabel | withoutLabel
+    }
 
     internal | external
   }

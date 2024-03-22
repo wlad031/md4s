@@ -148,6 +148,28 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
+  test("non labeled external link can be parsed") {
+    val toParse = "https://example.com http://1.1.1.1 [label](https://example2.com)"
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          Paragraph(content =
+            ElementsContainer(elements =
+              List(
+                Link.External(Link.Location.External("https://example.com"), None),
+                Text(" "),
+                Link.External(Link.Location.External("http://1.1.1.1"), None),
+                Text(" "),
+                Link.External(Link.Location.External("https://example2.com"), Some("label"))
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
   test("some one-way nested headings - simple") {
     val toParse = """
 |# Heading 1
