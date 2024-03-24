@@ -11,6 +11,9 @@
     },
     {
       "path": "../md4j"
+    },
+    {
+      "path": "../myhub-ril-indexer"
     }
   ],
   "settings": {
