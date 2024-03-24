@@ -30,6 +30,32 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
+  test("simple block - video parsed") {
+    val toParse = """{{video https://youtube.com/123}}"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          Paragraph(
+            ElementsContainer(
+              List(SimpleBlock.Video(Link.Location.External("https://youtube.com/123")))
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("simple block - query parsed") {
+    val toParse = """{{query this is query}}"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(Paragraph(ElementsContainer(List(SimpleBlock.Query("this is query")))))
+      )
+    )
+  }
+
   test("labeled internal page link is parsed") {
     val toParse = "[text]([[page]])"
     checkParser(

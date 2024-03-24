@@ -3,6 +3,7 @@ package logseq
 
 import dev.vgerasimov.md4s.models.*
 import dev.vgerasimov.md4s.logseq.elements.Timestamp.RepeaterOrDelay.Value
+import dev.vgerasimov.md4s.logseq.blocks.BeginEndBlock.Custom
 
 object models:
   import blocks.*
@@ -155,8 +156,8 @@ private[logseq] object blocks:
     ) extends BeginEndBlock:
       override val name: String = "QUERY"
     case class Custom(
-      override val content: String,
-      override val name: String,
+      override val content: String, 
+      override val name: String, // TODO: name is not a good name, maybe type?
       override val indentation: Option[Indentation] = None
     ) extends BeginEndBlock
 
@@ -234,6 +235,11 @@ private[logseq] object elements:
       object Internal:
         case class Page(value: String) extends Internal
         case class Block(value: String) extends Internal
+
+  sealed trait SimpleBlock extends Element
+  object SimpleBlock:
+    case class Query(value: String) extends SimpleBlock
+    case class Video(location: Link.Location.External) extends SimpleBlock
 
   case class Image(altText: String, url: String, title: Option[String]) extends Element
 

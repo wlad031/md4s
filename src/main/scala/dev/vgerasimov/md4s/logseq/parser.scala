@@ -84,12 +84,12 @@ class parser(ctx: Context = Context.defaultCtx):
       .map(sym => Indentation(sym.size, sym.map(_.value).mkString))
 
   private def elementsContainerWithoutEmphasis: P[ElementsContainer] =
-    choice(timestamp, link, !eol ~ singleCharText).+.map(_.toList)
+    choice(simpleBlock, timestamp, link, !eol ~ singleCharText).+.map(_.toList)
       .map(foldTexts[Element])
       .map(ElementsContainer.apply)
 
   private def elementsContainer: P[ElementsContainer] =
-    (choice(timestamp, link, emphasis, !eol ~ singleCharText).* ~ eolOrEnd)
+    (choice(simpleBlock, timestamp, link, emphasis, !eol ~ singleCharText).* ~ eolOrEnd)
       .map(_.toList)
       .map(foldTexts[Element])
       .map(ElementsContainer.apply)
@@ -281,6 +281,13 @@ class parser(ctx: Context = Context.defaultCtx):
         paragraph(minIndentation = minIndentation)
       )
 
+  private def linkLocationExternal: P[Link.Location.External] =
+    def protocol: P[String] = ctx.knownLinkProtocols.map(p => P(p)).reduce(_ | _).!
+    def stop = anyFrom("()[]|{}") | ws | eolOrEnd
+    (protocol ~ P("://") ~ until(stop).! ~ &(stop))
+      .map { case (p, l) => s"$p://$l" }
+      .map(Link.Location.External.apply)
+
   private def link: P[Link] = {
     import Link.*
 
@@ -330,22 +337,24 @@ class parser(ctx: Context = Context.defaultCtx):
     }
 
     def external: P[External] = {
-      def protocol: P[String] = ctx.knownLinkProtocols.map(p => P(p)).reduce(_ | _).!
-      def location: P[Location.External] = 
-        def stop = anyFrom("()[]|") | ws | eolOrEnd
-        (protocol ~ P("://") ~ until(stop).! ~ &(stop))
-          .map { case (p, l) => s"$p://$l" }
-          .map(Location.External.apply)
-      def withoutLabel: P[External] = location.map(External(_, label = None))
+      def withoutLabel: P[External] = linkLocationExternal.map(External(_, label = None))
       def withLabel: P[External] =
-        (label ~ P("(") ~ location ~ P(")")).map { case (label, location) =>
+        (label ~ P("(") ~ linkLocationExternal ~ P(")")).map { case (label, location) =>
           External(location, label = Some(label))
         }
-      
+
       withLabel | withoutLabel
     }
 
     internal | external
+  }
+
+  private def simpleBlock: P[SimpleBlock] = {
+    def query: P[SimpleBlock.Query] =
+      (P("{{query ") ~ until(P("}}")).! ~ P("}}")).map(SimpleBlock.Query.apply)
+    def video: P[SimpleBlock.Video] =
+      (P("{{video ") ~ linkLocationExternal ~ P("}}")).map(SimpleBlock.Video.apply)
+    video | query
   }
 
   // TODO: Refactor
