@@ -11,13 +11,13 @@ object parser:
 
   /** Configuration of a Logseq Markdown document. */
   case class Context(
-    statusKeywords: Set[String],
-    listMaxLevel: Int,
-    headingMinLevel: Int,
-    headingMaxLevel: Int,
-    commaSeparatedNodeProperties: Set[String],
-    aliasNodeProperty: String,
-    knownLinkProtocols: Set[String]
+    statusKeywords: Set[String] = Context.default.statusKeywords,
+    listMaxLevel: Int = Context.default.listMaxLevel,
+    headingMinLevel: Int = Context.default.headingMinLevel,
+    headingMaxLevel: Int = Context.default.headingMaxLevel,
+    commaSeparatedNodeProperties: Set[String] = Context.default.commaSeparatedNodeProperties,
+    aliasNodeProperty: String = Context.default.aliasNodeProperty,
+    knownLinkProtocols: Set[String] = Context.default.knownLinkProtocols
   )
 
   object Context:
@@ -41,16 +41,8 @@ object parser:
         // the entire parser will fail. So, the order is important.
         Set("https", "http", "mailto")
 
-    /** Default instance of [[Context]]. */
-    val defaultCtx: Context = Context(
-      statusKeywords = default.statusKeywords,
-      listMaxLevel = default.listMaxLevel,
-      headingMinLevel = default.headingMinLevel,
-      headingMaxLevel = default.headingMaxLevel,
-      commaSeparatedNodeProperties = default.commaSeparatedNodeProperties,
-      aliasNodeProperty = default.aliasNodeProperty,
-      knownLinkProtocols = default.knownLinkProtocols
-    )
+      private lazy val defaultCtx: Context = Context()
+      def apply(): Context = defaultCtx
 
   end Context
 
@@ -66,7 +58,7 @@ object parser:
 
 import parser.*
 
-class parser(ctx: Context = Context.defaultCtx):
+class parser(ctx: Context = Context.default()):
 
   def document: P[LogseqMarkdown] = evalAndLazyThen(delayedDocument)
 
@@ -305,9 +297,10 @@ class parser(ctx: Context = Context.defaultCtx):
             .map(WithBrackets.apply)
 
         def withoutBrackets: P[WithoutBrackets] = {
-          def stop: P[Unit] = !alphaNum
+          def collector: P[String] = (alphaNum | (P(".").+ ~ alphaNum)).!
+          def stop = !collector
 
-          (P("#") ~ !stop ~ until(stop, collector = alphaNum).! ~ &(stop))
+          (P("#") ~ !stop ~ until(stop, collector = collector).! ~ &(stop))
             .map(Location.Internal.Page.apply)
             .map(WithoutBrackets.apply)
         }

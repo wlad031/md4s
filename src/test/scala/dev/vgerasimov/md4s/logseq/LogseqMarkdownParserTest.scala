@@ -99,7 +99,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
   }
 
   test("simple internal page link is parsed") {
-    val toParse = "[[page]]"
+    val toParse = "[[page]] [[page.dot]] [[pagedot.]]"
     checkParser(
       toParse,
       LogseqMarkdown(
@@ -107,8 +107,12 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
           Paragraph(content =
             ElementsContainer(elements =
               List(
-                Link.Internal.Classic(Link.Location.Internal.Page("page"), label = None)
-              )
+                Link.Internal.Classic(Link.Location.Internal.Page("page"), label = None),
+                Text(" "),
+                Link.Internal.Classic(Link.Location.Internal.Page("page.dot"), label = None),
+                Text(" "),
+                Link.Internal.Classic(Link.Location.Internal.Page("pagedot."), label = None)
+              ),
             )
           )
         )
@@ -135,7 +139,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
   }
 
   test("tag link is parsed") {
-    val toParse = "#page #[[page2]] #[[page with space]]"
+    val toParse = "#page #[[page2]] #[[page with space]] #.dottag #trailingdot1. #trailingdot2."
     checkParser(
       toParse,
       LogseqMarkdown(
@@ -147,7 +151,14 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 Text(" "),
                 Link.Internal.Tag.WithBrackets(Link.Location.Internal.Page("page2")),
                 Text(" "),
-                Link.Internal.Tag.WithBrackets(Link.Location.Internal.Page("page with space"))
+                Link.Internal.Tag.WithBrackets(Link.Location.Internal.Page("page with space")),
+                Text(" "),
+                Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page(".dottag")),
+                Text(" "),
+                Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("trailingdot1")),
+                Text(". "),
+                Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("trailingdot2")),
+                Text(".")
               )
             )
           )
@@ -1161,7 +1172,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     )
   }
 
-  lazy val ctx = Context.defaultCtx
+  lazy val ctx = Context.default()
   lazy val parser = new parser(ctx)
 
   extension [T](r: POut[T])

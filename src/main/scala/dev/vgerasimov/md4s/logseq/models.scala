@@ -207,16 +207,17 @@ private[logseq] object elements:
   sealed trait Link extends Element
   object Link:
 
-    sealed trait Internal extends Link
+    sealed trait Internal extends Link:
+      def location: Location.Internal
     object Internal:
 
       case class Classic(
-        location: Link.Location.Internal,
+        override val location: Link.Location.Internal,
         label: Option[String] = None
       ) extends Internal
 
       sealed trait Tag extends Internal:
-        def location: Location.Internal.Page
+        override def location: Location.Internal.Page
       object Tag:
         case class WithBrackets(override val location: Location.Internal.Page) extends Tag
         case class WithoutBrackets(override val location: Location.Internal.Page) extends Tag

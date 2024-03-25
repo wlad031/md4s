@@ -235,7 +235,7 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   import dev.vgerasimov.md4s.logseq.parser.*
   import dev.vgerasimov.slowparse.{ P, POut }
 
-  lazy val ctx = Context.defaultCtx
+  lazy val ctx = Context.default()
   lazy val parser = new parser(ctx)
 
   test("Text -> Parsing -> Formatting [1]") {
