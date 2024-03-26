@@ -46,7 +46,7 @@ object formatter:
           case Classic(Location.Internal.Page(page), Some(text)) =>
             s"[${text}]([[${page}]])"
           case Classic(Location.Internal.Block(block), None) =>
-            s"[[${block}]]"
+            s"((${block}))"
           case Classic(Location.Internal.Block(block), Some(text)) =>
             s"[${text}](((${block})))"
           case Tag.WithBrackets(Location.Internal.Page(page))    => s"#[[${page}]]"
@@ -64,6 +64,7 @@ object formatter:
       case Text(content)               => content
       case Emphasis(marker, contents)  => marker.value + format(contents) + marker.value
       case link: Link                  => formatLink(link)
+      case SimpleBlock.Video(Link.Location.External(url))    => s"{{video $url}}"
       case x                           => throw new Exception(s"Unsupported inline element: $x")
 
   private def formatTable(table: Table): String = {
@@ -110,7 +111,7 @@ object formatter:
       maybePriority.foreach(x => res.append(format(x)))
       maybeStatus.foreach(x => res.append(format(x)))
       maybeContent.foreach(x => res.append(format(x)))
-      maybePropertyDrawer.foreach(x => res.append(formatProperyDrawer(x)))
+      maybePropertyDrawer.foreach(x => res.append("\n").append(formatProperyDrawer(x)))
       res.toString()
     case HeadedSection(heading, content, maybeIndentation) =>
       val res = StringBuffer()
@@ -121,6 +122,15 @@ object formatter:
     case MarkdownList.Unordered(items, maybeIndentation) =>
       val indentation = maybeIndentation.map(format).getOrElse("")
       items.map(x => indentation + format(x)).mkString("\n")
+    case CodeBlock(content, maybeMetadata, maybeIndentation) =>
+      val res = StringBuffer()
+      maybeIndentation.foreach(x => res.append(format(x)))
+      res.append("```")
+      maybeMetadata.foreach(x => res.append(x))
+      res.append("\n")
+      res.append(content)
+      res.append("\n```")
+      res.toString()
     case t: Table => formatTable(t)
     case x        => throw new Exception(s"Unsupported block element: $x")
 

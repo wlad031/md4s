@@ -34,6 +34,8 @@ object models:
     private val defaultLevel: Int = 0
     private val defaultValue: String = ""
     val defaultIndentation: Indentation = Indentation()
+    def fromLevel(level: Int, char: String = "  "): Indentation =
+      Indentation(level, value = char * level)
   trait Indentable:
     def indentation: Indentation = Indentation.defaultIndentation
   trait MaybeIndentable:
@@ -143,8 +145,10 @@ private[logseq] object blocks:
 
   case class CodeBlock(
     content: String,
-    metadata: Option[String] = None
+    metadata: Option[String] = None,
+    override val indentation: Option[Indentation] = None
   ) extends Block
+      with MaybeIndentable
 
   sealed trait BeginEndBlock extends Block with MaybeIndentable:
     def name: String
@@ -156,7 +160,7 @@ private[logseq] object blocks:
     ) extends BeginEndBlock:
       override val name: String = "QUERY"
     case class Custom(
-      override val content: String, 
+      override val content: String,
       override val name: String, // TODO: name is not a good name, maybe type?
       override val indentation: Option[Indentation] = None
     ) extends BeginEndBlock
