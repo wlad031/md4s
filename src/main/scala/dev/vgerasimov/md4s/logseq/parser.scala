@@ -218,12 +218,12 @@ class parser(ctx: Context = Context.default()):
     !((s0 ~ listMarker) | (s0 ~ P("#").+ ~ s1))
       ~ (indentation(min =
         minIndentation
-      ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer ~ propertyDrawer.? ~ customProperties.? ~ planning.*)
-        .map { case (ind, priority, status, content, drawer, maybeCustomProperties, planning) =>
+      ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer ~ propertyDrawer.? ~ customProperties.* ~ planning.*)
+        .map { case (ind, priority, status, content, drawer, customProperties, planning) =>
           Paragraph(
             content = content,
             propertyDrawer = drawer,
-            customProperties = maybeCustomProperties,
+            customProperties = customProperties,
             indentation = Some(ind),
             planning = planning,
             priority = priority,

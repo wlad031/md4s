@@ -930,7 +930,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 )
               )
             ),
-            customProperties = Some(
+            customProperties = List(
               CustomProperties(
                 name = "CUSTOM",
                 value = "\nhere just a text\n"

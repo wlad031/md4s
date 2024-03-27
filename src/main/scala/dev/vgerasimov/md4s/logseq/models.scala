@@ -113,7 +113,7 @@ private[logseq] object blocks:
   case class Paragraph(
     content: ElementsContainer = ElementsContainer.empty,
     propertyDrawer: Option[PropertyDrawer] = None,
-    customProperties: Option[CustomProperties] = None,
+    customProperties: List[CustomProperties] = Nil,
     planning: List[Planning] = Nil,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
