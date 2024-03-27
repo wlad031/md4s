@@ -3,6 +3,7 @@ package logseq
 
 import models.*
 import ops.{ *, given }
+import dev.vgerasimov.md4s.logseq.formatter.format
 
 class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
 
@@ -256,6 +257,20 @@ class LogseqMarkdownFormatterTest extends munit.ScalaCheckSuite:
   }
 
   test("Text -> Parsing -> Formatting [2]") {
+    val toParse = """
+- # heading
+  - ```clojure
+    (defn foo [x]
+      (inc x))
+    ```"""
+    parser.document(toParse) match
+      case POut.Success(toFormat, _, _, _) =>
+        val formatted = formatter.format(toFormat)
+        assertEquals(formatted, toParse)
+      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
+  }
+
+  test("Text -> Parsing -> Formatting [3]") {
     val toParse = """
 |  type:: [[Media/Movie]]
 |  author:: [[Кристофер Нолан]]

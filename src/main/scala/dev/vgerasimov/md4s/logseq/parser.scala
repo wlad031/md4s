@@ -233,13 +233,11 @@ class parser(ctx: Context = Context.default()):
 
   private def codeBlock: P[CodeBlock] =
     def surrounder = P("```")
-    (indentation() ~ surrounded(
-      surroundingParser = surrounder,
-      contentParser =
-        (!(eol | surrounder) ~ anyChar.!).+.mkString.? ~ eol ~ (!surrounder ~ anyChar.!).+.mkString
-    )).map { case (indentation, (lang, content)) =>
-      CodeBlock(content, lang, indentation = maybeIndentation(indentation))
-    }
+    (indentation() ~ surrounder ~ until(eol).!.? ~ eol ~ until(surrounder).! ~ surrounder ~ eolOrEnd)
+      .map {
+        case (indentation, metadata, content) =>
+          CodeBlock(content, metadata, indentation = maybeIndentation(indentation))
+      }
 
   private def beginEndBlock: P[BeginEndBlock] =
     def beginBlock: P[String] = P("#+BEGIN_") ~ alpha.+.!.map(_.mkString)

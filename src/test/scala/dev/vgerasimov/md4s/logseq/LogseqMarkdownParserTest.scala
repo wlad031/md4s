@@ -6,6 +6,7 @@ import dev.vgerasimov.slowparse.{ P, POut }
 import models.*
 import ops.{ *, given }
 import parser.*
+import dev.vgerasimov.md4s.logseq.blocks.MarkdownList
 
 class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 
@@ -21,6 +22,50 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                 Emphasis(
                   Emphasis.Marker.Italic("*"),
                   ElementsContainer(List(Text("hello world")))
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("code block parsed") {
+    val toParse = """- # heading
+  - ```clojure
+    (defn foo [x]
+      (inc x))
+    ```"""
+    checkParser(
+      toParse,
+      LogseqMarkdown(
+        blocks = List(
+          MarkdownList.Unordered(
+            List(
+              MarkdownList.Item(
+                marker = MarkdownList.Item.Marker("-"),
+                content = List(
+                  HeadedSection(
+                    h("heading", 1),
+                    List(
+                      
+                      MarkdownList.Unordered(
+                        indentation = Some(Indentation(1, "  ")),
+                        items = List(
+                          MarkdownList.Item(
+                            marker = MarkdownList.Item.Marker("-"),
+                            content = List(
+                              CodeBlock(
+                                metadata = Some("clojure"),
+                                content = "    (defn foo [x]\n      (inc x))\n    "
+                              )
+                            )
+                          )
+                        )
+                      )
+                    )
+                  )
                 )
               )
             )

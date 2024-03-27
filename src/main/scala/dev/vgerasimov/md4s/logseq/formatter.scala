@@ -129,7 +129,7 @@ object formatter:
       maybeMetadata.foreach(x => res.append(x))
       res.append("\n")
       res.append(content)
-      res.append("\n```")
+      res.append("```")
       res.toString()
     case t: Table => formatTable(t)
     case x        => throw new Exception(s"Unsupported block element: $x")
