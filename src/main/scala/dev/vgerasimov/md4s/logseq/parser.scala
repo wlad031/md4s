@@ -49,7 +49,7 @@ object Parser:
   private enum ListType:
     case Unordered, Ordered
 
-  private case class IntentationSymbol(value: String)
+  private case class IndentationSymbol(value: String)
 
   private def maybeIndentation(indentation: Indentation): Option[Indentation] = indentation match
     case Indentation(0, _)  => None
@@ -58,7 +58,11 @@ object Parser:
 
 import Parser.*
 
+/** Parser for ([[logseq.Document]]s. */
 class Parser(ctx: Context = Context.default()):
+
+  // TODO: Maybe I should not expose slowparse parsers from here.
+  //       I should think about adding methods returning `Either` or `Option` to this class.
 
   def document: P[Document] = evalAndLazyThen(delayedDocument)
 
@@ -72,7 +76,7 @@ class Parser(ctx: Context = Context.default()):
 
   private def indentation(min: Int = 0, max: Int = Int.MaxValue): P[Indentation] =
     val c: P[String] = (tab | doubleSpace).!
-    (c.map(IntentationSymbol.apply).rep(min = min, max = max) ~ !c)
+    (c.map(IndentationSymbol.apply).rep(min = min, max = max) ~ !c)
       .map(sym => Indentation(sym.size, sym.map(_.value).mkString))
 
   private def elementsContainerWithoutEmphasis: P[List[Element]] =
@@ -217,12 +221,12 @@ class Parser(ctx: Context = Context.default()):
       ~ (indentation(min =
         minIndentation
       ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer ~ propertyDrawer.? ~ customProperties.* ~ planning.*)
-        .map { case (ind, priority, status, content, drawer, customProperties, planning) =>
+        .map { case (indentation, priority, status, content, drawer, customProperties, planning) =>
           Paragraph(
             elements = content,
             propertyDrawer = drawer,
             customProperties = customProperties,
-            indentation = Some(ind),
+            indentation = maybeIndentation(indentation),
             planning = planning,
             priority = priority,
             status = status

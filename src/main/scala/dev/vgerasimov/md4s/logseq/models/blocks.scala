@@ -35,9 +35,7 @@ object blocks {
     planning: List[Planning] = Nil,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
-    override val indentation: Option[Indentation] = Some(
-      Indentation.default()
-    ) // TODO: It should be rather None
+    override val indentation: Option[Indentation] = None
   ) extends Block
       with MaybeIndentable
 

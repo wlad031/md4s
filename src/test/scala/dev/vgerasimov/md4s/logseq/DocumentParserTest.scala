@@ -951,8 +951,8 @@ class DocumentParserTest extends munit.ScalaCheckSuite:
             ),
             customProperties = List(
               CustomProperties(
-                name = "CUSTOM",
-                value = "\nhere just a text\n"
+                blockName = "CUSTOM",
+                content = "\nhere just a text\n"
               )
             )
           )

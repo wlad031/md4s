@@ -68,42 +68,124 @@ object ops {
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
 
+  /** Contains utilities for working with property-related models. */
   object properties {
     import PropertyDrawer.*
+    import Node.*
 
+    /** Contains extension methods for [[PropertyDrawer]]. */
     extension (propertyDrawer: PropertyDrawer) {
 
+      /** Appends a node to the property drawer. */
       def append(node: Node): PropertyDrawer =
         propertyDrawer.copy(nodes = propertyDrawer.nodes :+ node)
+
+      /** Alias for [[append]]. */
       def :+ (node: Node): PropertyDrawer = append(node)
 
+      /** Appends a node to the property drawer if it doesn't have a node with the same key. */
+      def appendIfDoesntHave(node: Node): PropertyDrawer =
+        node match {
+          case Node(Key(k, _), _, _) if propertyDrawer.has(k) => propertyDrawer
+          case _                                              => append(node)
+        }
+
+      /** Prepends a node to the property drawer. */
       def prepend(node: Node): PropertyDrawer =
         propertyDrawer.copy(nodes = node :: propertyDrawer.nodes)
+
+      /** Alias for [[prepend]]. */
       def :: (node: Node): PropertyDrawer = prepend(node)
+
+      /** Gets a node by key. */
+      def get(key: String): Option[Node] =
+        propertyDrawer.nodes.find { case Node(Key(k, _), _, _) =>
+          k == key
+        }
+
+      /** Checks if the property drawer has a node with the given key. */
+      def has(key: String): Boolean = get(key).isDefined
+
+      /** Checks if the property drawer has a node with the given key and a non-empty value. */
+      def hasNonEmpty(key: String): Boolean = get(key).filter {
+        case Node(_, Value(Text(value) :: Nil), _) => value.nonEmpty
+        case _                                     => false
+      }.isDefined
     }
 
+    /** Contains extension methods for [[Option]] of [[PropertyDrawer]]. */
     extension (maybePropertyDrawer: Option[PropertyDrawer]) {
-      def append(node: PropertyDrawer.Node): PropertyDrawer = maybePropertyDrawer match {
+
+      /** Appends a node to the property drawer.
+        *
+        * If the property drawer is empty, creates a new one with the given node.
+        */
+      def appendOrCreate(node: PropertyDrawer.Node): PropertyDrawer = maybePropertyDrawer match {
         case None                 => PropertyDrawer(List(node))
         case Some(propertyDrawer) => propertyDrawer.append(node)
       }
+
+      /** Appends a node to the property drawer if it doesn't have a node with the same key.
+        *
+        * If the property drawer is empty, creates a new one with the given node.
+        */
+      def appendIfDoesntHaveOrCreate(node: PropertyDrawer.Node): PropertyDrawer =
+        maybePropertyDrawer match {
+          case None                 => PropertyDrawer(List(node))
+          case Some(propertyDrawer) => propertyDrawer.appendIfDoesntHave(node)
+        }
     }
 
+    /** Creates a property drawer node with the given key and simple text value. */
     def node(key: String, value: String): Node =
       Node(Node.Key(key), Node.Value(List(Text(value))))
   }
 
+  /** Contains utilities for working with [[Block]]s. */
   object blocks {
     import ops.properties.{ *, given }
 
+    /** Contains extension methods for [[Block]]s. */
     extension (block: Block) {
-      def appendPropertyNode(node: PropertyDrawer.Node): Block = block match {
+
+      /** Appends a property node to the block. */
+      def appendPropertyNode(node: PropertyDrawer.Node): Block =
+        appendPropertyNode(_.appendOrCreate(_))(node)
+
+      /** Appends a property node to the block if it doesn't have a node with the same key. */
+      def appendPropertyNodeIfDoesntHave(node: PropertyDrawer.Node): Block =
+        appendPropertyNode(_.appendIfDoesntHaveOrCreate(_))(node)
+
+      /** Actual implementation for appendPropertyNode* methods. */
+      private def appendPropertyNode(
+        f: (Option[PropertyDrawer], PropertyDrawer.Node) => PropertyDrawer
+      )(node: PropertyDrawer.Node): Block = block match {
         case b @ HeadedSection(h @ Heading(_, _, _, _, maybePropertyDrawer), _, _) =>
-          b.copy(heading = h.copy(propertyDrawer = Some(maybePropertyDrawer.append(node))))
+          b.copy(heading = h.copy(propertyDrawer = Some(f(maybePropertyDrawer, node))))
         case b @ Paragraph(_, maybePropertyDrawer, _, _, _, _, _) =>
-          b.copy(propertyDrawer = Some(maybePropertyDrawer.append(node)))
+          b.copy(propertyDrawer = Some(f(maybePropertyDrawer, node)))
         case b => b
       }
+
+      /** Appends a [[CustomProperties]] to the block. */
+      def appendCustomProperties(customProperties: CustomProperties): Block =
+        appendCustomProperties(_ :+ _)(customProperties)
+
+      /** Appends a [[CustomProperties]] to the block if it doesn't have it with the same name. */
+      def appendCustomPropertiesIfNotExists(customProperties: CustomProperties): Block =
+        appendCustomProperties((existing, newOne) =>
+          if existing.exists(_.blockName == newOne.blockName) then existing else existing :+ newOne
+        )(customProperties)
+
+      /** Actual implementation for appendCustomProperties* methods. */
+      private def appendCustomProperties(
+        f: (List[CustomProperties], CustomProperties) => List[CustomProperties]
+      )(customProperties: CustomProperties): Block = block match {
+        case b @ Paragraph(_, _, customPropertiesList, _, _, _, _) =>
+          b.copy(customProperties = f(customPropertiesList, customProperties))
+        case b => b
+      }
+
     }
 
     object table {

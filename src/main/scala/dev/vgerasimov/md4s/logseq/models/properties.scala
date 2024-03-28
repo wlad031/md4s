@@ -34,7 +34,7 @@ object properties {
     }
   }
 
-  case class CustomProperties(name: String, value: String)
+  case class CustomProperties(blockName: String, content: String)
 
   sealed trait Planning {
     def timestamp: Timestamp
