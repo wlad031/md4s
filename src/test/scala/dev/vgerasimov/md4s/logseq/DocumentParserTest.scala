@@ -5,24 +5,21 @@ import dev.vgerasimov.slowparse.{ P, POut }
 
 import models.*
 import ops.{ *, given }
-import parser.*
-import dev.vgerasimov.md4s.logseq.blocks.MarkdownList
+import Parser.*
 
-class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
+class DocumentParserTest extends munit.ScalaCheckSuite:
 
   test("some valid markup string") {
     val toParse = """*hello world*"""
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           Paragraph(
-            ElementsContainer(
-              List(
-                Emphasis(
-                  Emphasis.Marker.Italic("*"),
-                  ElementsContainer(List(Text("hello world")))
-                )
+            List(
+              Emphasis(
+                Emphasis.Marker.Italic("*"),
+                List(Text("hello world"))
               )
             )
           )
@@ -39,23 +36,22 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     ```"""
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           MarkdownList.Unordered(
             List(
               MarkdownList.Item(
                 marker = MarkdownList.Item.Marker("-"),
-                content = List(
+                blocks = List(
                   HeadedSection(
                     h("heading", 1),
                     List(
-                      
                       MarkdownList.Unordered(
                         indentation = Some(Indentation(1, "  ")),
                         items = List(
                           MarkdownList.Item(
                             marker = MarkdownList.Item.Marker("-"),
-                            content = List(
+                            blocks = List(
                               CodeBlock(
                                 metadata = Some("clojure"),
                                 content = "    (defn foo [x]\n      (inc x))\n    "
@@ -79,12 +75,10 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = """{{video https://youtube.com/123}}"""
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           Paragraph(
-            ElementsContainer(
-              List(SimpleBlock.Video(Link.Location.External("https://youtube.com/123")))
-            )
+            List(SimpleBlock.Video(Link.Location.External("https://youtube.com/123")))
           )
         )
       )
@@ -95,8 +89,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = """{{query this is query}}"""
     checkParser(
       toParse,
-      LogseqMarkdown(
-        blocks = List(Paragraph(ElementsContainer(List(SimpleBlock.Query("this is query")))))
+      Document(
+        blocks = List(Paragraph(List(SimpleBlock.Query("this is query"))))
       )
     )
   }
@@ -105,15 +99,13 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "[text]([[page]])"
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
-          Paragraph(content =
-            ElementsContainer(elements =
-              List(
-                Link.Internal.Classic(
-                  Link.Location.Internal.Page("page"),
-                  label = Some("text")
-                )
+          Paragraph(elements =
+            List(
+              Link.Internal.Classic(
+                Link.Location.Internal.Page("page"),
+                label = Some("text")
               )
             )
           )
@@ -126,15 +118,13 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "[label](((block-id)))"
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
-          Paragraph(content =
-            ElementsContainer(elements =
-              List(
-                Link.Internal.Classic(
-                  Link.Location.Internal.Block("block-id"),
-                  label = Some("label")
-                )
+          Paragraph(elements =
+            List(
+              Link.Internal.Classic(
+                Link.Location.Internal.Block("block-id"),
+                label = Some("label")
               )
             )
           )
@@ -147,18 +137,16 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "[[page]] [[page.dot]] [[pagedot.]]"
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
-          Paragraph(content =
-            ElementsContainer(elements =
-              List(
-                Link.Internal.Classic(Link.Location.Internal.Page("page"), label = None),
-                Text(" "),
-                Link.Internal.Classic(Link.Location.Internal.Page("page.dot"), label = None),
-                Text(" "),
-                Link.Internal.Classic(Link.Location.Internal.Page("pagedot."), label = None)
-              ),
-            )
+          Paragraph(elements =
+            List(
+              Link.Internal.Classic(Link.Location.Internal.Page("page"), label = None),
+              Text(" "),
+              Link.Internal.Classic(Link.Location.Internal.Page("page.dot"), label = None),
+              Text(" "),
+              Link.Internal.Classic(Link.Location.Internal.Page("pagedot."), label = None)
+            ),
           )
         )
       )
@@ -169,13 +157,11 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "((block-id))"
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
-          Paragraph(content =
-            ElementsContainer(elements =
-              List(
-                Link.Internal.Classic(Link.Location.Internal.Block("block-id"), label = None)
-              )
+          Paragraph(elements =
+            List(
+              Link.Internal.Classic(Link.Location.Internal.Block("block-id"), label = None)
             )
           )
         )
@@ -187,24 +173,22 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "#page #[[page2]] #[[page with space]] #.dottag #trailingdot1. #trailingdot2."
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
-          Paragraph(content =
-            ElementsContainer(elements =
-              List(
-                Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("page")),
-                Text(" "),
-                Link.Internal.Tag.WithBrackets(Link.Location.Internal.Page("page2")),
-                Text(" "),
-                Link.Internal.Tag.WithBrackets(Link.Location.Internal.Page("page with space")),
-                Text(" "),
-                Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page(".dottag")),
-                Text(" "),
-                Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("trailingdot1")),
-                Text(". "),
-                Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("trailingdot2")),
-                Text(".")
-              )
+          Paragraph(elements =
+            List(
+              Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("page")),
+              Text(" "),
+              Link.Internal.Tag.WithBrackets(Link.Location.Internal.Page("page2")),
+              Text(" "),
+              Link.Internal.Tag.WithBrackets(Link.Location.Internal.Page("page with space")),
+              Text(" "),
+              Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page(".dottag")),
+              Text(" "),
+              Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("trailingdot1")),
+              Text(". "),
+              Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("trailingdot2")),
+              Text(".")
             )
           )
         )
@@ -216,13 +200,11 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "[label](https://example.com)"
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
-          Paragraph(content =
-            ElementsContainer(elements =
-              List(
-                Link.External(Link.Location.External("https://example.com"), Some("label"))
-              )
+          Paragraph(elements =
+            List(
+              Link.External(Link.Location.External("https://example.com"), Some("label"))
             )
           )
         )
@@ -234,17 +216,15 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "https://example.com http://1.1.1.1 [label](https://example2.com)"
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
-          Paragraph(content =
-            ElementsContainer(elements =
-              List(
-                Link.External(Link.Location.External("https://example.com"), None),
-                Text(" "),
-                Link.External(Link.Location.External("http://1.1.1.1"), None),
-                Text(" "),
-                Link.External(Link.Location.External("https://example2.com"), Some("label"))
-              )
+          Paragraph(elements =
+            List(
+              Link.External(Link.Location.External("https://example.com"), None),
+              Text(" "),
+              Link.External(Link.Location.External("http://1.1.1.1"), None),
+              Text(" "),
+              Link.External(Link.Location.External("https://example2.com"), Some("label"))
             )
           )
         )
@@ -260,7 +240,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |""".trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           HeadedSection(
             h("Heading 1", 1),
@@ -289,7 +269,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |""".trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           HeadedSection(
             h("Heading 1", 1),
@@ -323,7 +303,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |""".trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           HeadedSection(
             h("Heading 1", 1),
@@ -374,7 +354,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 """.trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           MarkdownList.Unordered(
             List(
@@ -394,13 +374,13 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 """.trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           MarkdownList.Unordered(
             List(
               MarkdownList.Item(
                 List(
-                  Paragraph(ElementsContainer(List(Text("list item 1")))),
+                  Paragraph(List(Text("list item 1"))),
                   MarkdownList.Unordered(
                     indentation = Some(Indentation(1, "  ")),
                     items = List(
@@ -424,23 +404,21 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = "k1:: v1\nk2:: v2\nk3::\nk4:: #tag1, #tag2"
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(),
         propertyDrawer = Some(
           PropertyDrawer(
             List(
-              Node(Key("k1"), Value(ElementsContainer(List(Text("v1"))))),
-              Node(Key("k2"), Value(ElementsContainer(List(Text("v2"))))),
-              Node(Key("k3", spacingAfter = None), Value(ElementsContainer(List()))),
+              Node(Key("k1"), Value(List(Text("v1")))),
+              Node(Key("k2"), Value(List(Text("v2")))),
+              Node(Key("k3", spacingAfter = None), Value(List())),
               Node(
                 Key("k4"),
                 Value(
-                  ElementsContainer(
-                    List(
-                      Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag1")),
-                      Text(", "),
-                      Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag2"))
-                    )
+                  List(
+                    Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag1")),
+                    Text(", "),
+                    Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag2"))
                   )
                 ),
                 indentation = None
@@ -468,85 +446,83 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 """.trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           MarkdownList.Unordered(
             items = List(
               MarkdownList.Item(
-                content = List(
-                  HeadedSection(heading = h("Heading 1", 1), content = List())
+                blocks = List(
+                  HeadedSection(heading = h("Heading 1", 1), blocks = List())
                 ),
                 marker = MarkdownList.Item.Marker("-")
               ),
               MarkdownList.Item(
-                content = List(
-                  HeadedSection(heading = h("Heading 2", 1), content = List())
+                blocks = List(
+                  HeadedSection(heading = h("Heading 2", 1), blocks = List())
                 ),
                 marker = MarkdownList.Item.Marker("-")
               ),
               MarkdownList.Item(
-                content = List(
+                blocks = List(
                   HeadedSection(
                     heading = Heading(
                       level = Heading.Level(value = 1),
-                      content = Some(ElementsContainer(List(Text("todo heading")))),
+                      elements = List(Text("todo heading")),
                       status = Some(Status("TODO", spacingAfter = Some(Spacing(" "))))
                     ),
-                    content = List()
+                    blocks = List()
                   )
                 ),
                 marker = MarkdownList.Item.Marker("-")
               ),
               MarkdownList.Item(
-                content = List(
+                blocks = List(
                   HeadedSection(
                     heading = Heading(
                       level = Heading.Level(value = 1),
-                      content = Some(ElementsContainer(List(Text("done heading with priority")))),
+                      elements = List(Text("done heading with priority")),
                       status = Some(Status("DONE", spacingAfter = Some(Spacing(" ")))),
                       priority = Some(Priority('A', spacingAfter = Some(Spacing(" "))))
                     ),
-                    content = List()
+                    blocks = List()
                   )
                 ),
                 marker = MarkdownList.Item.Marker("-")
               ),
               MarkdownList.Item(
-                content = List(
+                blocks = List(
                   HeadedSection(
                     Heading(
                       level = Heading.Level(value = 1),
-                      content =
-                        Some(ElementsContainer(List(Text("doing heading with properties")))),
+                      elements = List(Text("doing heading with properties")),
                       status = Some(Status("DOING", spacingAfter = Some(Spacing(" ")))),
                       propertyDrawer = Some(
                         PropertyDrawer(
                           List(
                             Node(
                               Key("k1"),
-                              Value(ElementsContainer(List(Text("v1")))),
+                              Value(List(Text("v1"))),
                               indentation = Some(Indentation(1, "  "))
                             ),
                             Node(
                               Key("k2"),
-                              Value(ElementsContainer(List(Text("v2")))),
+                              Value(List(Text("v2"))),
                               indentation = Some(Indentation(1, "  "))
                             )
                           )
                         )
                       )
                     ),
-                    content = List()
+                    blocks = List()
                   )
                 ),
                 marker = MarkdownList.Item.Marker("-")
               ),
               MarkdownList.Item(
-                content = List(
+                blocks = List(
                   HeadedSection(
                     heading = h("last heading", 1),
-                    content =
-                      List(Paragraph(ElementsContainer(List(Text("and some text, just because")))))
+                    blocks = List(Paragraph(List(Text("and some text, just because"))))
                   )
                 ),
                 marker = MarkdownList.Item.Marker("-")
@@ -569,11 +545,11 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |""".trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           HeadedSection(
             heading = h("Heading 1", 1),
-            content = List(
+            blocks = List(
               MarkdownList.Unordered(
                 items = List(
                   listItem("list item 1", "+")
@@ -581,7 +557,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               ),
               HeadedSection(
                 heading = h("Heading 2.1", 2),
-                content = List(
+                blocks = List(
                   MarkdownList.Unordered(
                     items = List(
                       listItem("list item 1", "-"),
@@ -592,7 +568,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               ),
               HeadedSection(
                 heading = h("Heading 2.2", 2),
-                content = List()
+                blocks = List()
               )
             )
           )
@@ -624,16 +600,16 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           HeadedSection(
             heading = h("Heading 1", 1),
-            content = List(
+            blocks = List(
               MarkdownList.Unordered(
                 List(
                   MarkdownList.Item(
-                    content = List(
-                      Paragraph(ElementsContainer(List(Text("list item 1")))),
+                    blocks = List(
+                      Paragraph(List(Text("list item 1"))),
                       MarkdownList.Unordered(
                         indentation = Some(Indentation(1, "  ")),
                         items = List(
@@ -649,7 +625,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               ),
               HeadedSection(
                 heading = h("Heading 2.1", 2),
-                content = List(
+                blocks = List(
                   MarkdownList.Unordered(
                     List(
                       listItem("list item 1", "-"),
@@ -660,7 +636,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               ),
               HeadedSection(
                 heading = h("Heading 2.2", 2),
-                content = List(
+                blocks = List(
                   MarkdownList.Unordered(
                     List(
                       MarkdownList.Item(
@@ -673,13 +649,13 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                         marker = MarkdownList.Item.Marker("-")
                       ),
                       MarkdownList.Item(
-                        content = List(
+                        blocks = List(
                           HeadedSection(
                             heading = h("list heading 2", 2),
-                            content = List(
+                            blocks = List(
                               HeadedSection(
                                 heading = h("list heading 2.1", 3),
-                                content = List(
+                                blocks = List(
                                   MarkdownList.Unordered(
                                     List(
                                       listItem("list item 2.1.1", "-"),
@@ -692,7 +668,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                               ),
                               HeadedSection(
                                 heading = h("list heading 2.2", 3),
-                                content = List(
+                                blocks = List(
                                   MarkdownList.Unordered(
                                     items = List(
                                       listItem("list item 2.2.1", "-")
@@ -709,10 +685,10 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                         marker = MarkdownList.Item.Marker("-")
                       ),
                       MarkdownList.Item(
-                        content = List(
+                        blocks = List(
                           HeadedSection(
                             heading = h("list heading 3", 3),
-                            content = List()
+                            blocks = List()
                           )
                         ),
                         marker = MarkdownList.Item.Marker("-")
@@ -741,7 +717,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |text""".trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           HeadedSection(
             heading = h(
@@ -749,7 +725,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               1,
               propertyDrawer = Some(
                 PropertyDrawer(
-                  List(Node(Key("k3"), Value(ElementsContainer(List(Text("v3"))))))
+                  List(Node(Key("k3"), Value(List(Text("v3")))))
                 )
               )
             ),
@@ -760,12 +736,12 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
                   2,
                   propertyDrawer = Some(
                     PropertyDrawer(
-                      List(Node(Key("k4"), Value(ElementsContainer(List(Text("v4"))))))
+                      List(Node(Key("k4"), Value(List(Text("v4")))))
                     )
                   )
                 ),
-                content = List(
-                  Paragraph(ElementsContainer(List(Text("text"))))
+                blocks = List(
+                  Paragraph(List(Text("text")))
                 )
               )
             )
@@ -774,8 +750,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
         propertyDrawer = Some(
           PropertyDrawer(
             List(
-              Node(Key("k1"), Value(ElementsContainer(List(Text("v1"))))),
-              Node(Key("k2"), Value(ElementsContainer(List(Text("v2")))))
+              Node(Key("k1"), Value(List(Text("v1")))),
+              Node(Key("k2"), Value(List(Text("v2"))))
             )
           )
         )
@@ -807,38 +783,38 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 """.trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         propertyDrawer = Some(
           PropertyDrawer(
             List(
               Node(
                 Key("type"),
-                Value(ElementsContainer(List(classicInternalLink("Media/Movie")))),
+                Value(List(classicInternalLink("Media/Movie"))),
                 indentation = Some(Indentation(1, "  "))
               ),
               Node(
                 Key("author"),
-                Value(ElementsContainer(List(classicInternalLink("Кристофер Нолан")))),
+                Value(List(classicInternalLink("Кристофер Нолан"))),
                 indentation = Some(Indentation(1, "  "))
               ),
               Node(
                 Key("status"),
-                Value(ElementsContainer(List(classicInternalLink("DONE")))),
+                Value(List(classicInternalLink("DONE"))),
                 indentation = Some(Indentation(1, "  "))
               ),
               Node(
                 Key("alias"),
-                Value(ElementsContainer(List(Text("Oppenheimer")))),
+                Value(List(Text("Oppenheimer"))),
                 indentation = Some(Indentation(1, "  "))
               ),
               Node(
                 Key("rating"),
-                Value(ElementsContainer(List(Text("5")))),
+                Value(List(Text("5"))),
                 indentation = Some(Indentation(1, "  "))
               ),
               Node(
                 Key("done-date"),
-                Value(ElementsContainer(List(classicInternalLink("2023-07-29")))),
+                Value(List(classicInternalLink("2023-07-29"))),
                 indentation = Some(Indentation(1, "  "))
               )
             )
@@ -849,14 +825,12 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
             List(
               MarkdownList.Item(
                 marker = MarkdownList.Item.Marker("-"),
-                content = List(
+                blocks = List(
                   Paragraph(
-                    content = ElementsContainer(
-                      List(
-                        classicInternalLink("Oppenheimer"),
-                        Text(" in "),
-                        classicInternalLink("Cinema City")
-                      )
+                    elements = List(
+                      classicInternalLink("Oppenheimer"),
+                      Text(" in "),
+                      classicInternalLink("Cinema City")
                     ),
                     status = Some(Status("DONE", spacingAfter = Some(Spacing(" ")))),
                     planning = List(
@@ -881,10 +855,10 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               ),
               MarkdownList.Item(
                 marker = MarkdownList.Item.Marker("-"),
-                content = List(
+                blocks = List(
                   HeadedSection(
                     heading = h("Cast", 1),
-                    content = List(
+                    blocks = List(
                       MarkdownList.Unordered(
                         List(
                           listItem(classicInternalLink("Киллиан Мерфи"), "-"),
@@ -919,7 +893,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |#+END_QUERY""".strip().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           BeginEndBlock.LogseqQuery(
             content =
@@ -939,7 +913,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |#+END_FOO""".strip().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           BeginEndBlock.Custom(
             content = "\n#+BEGIN_kek\nfoo bar baz\n#+END_kek\n",
@@ -963,15 +937,15 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 """.trim().stripMargin
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           Paragraph(
-            content = ElementsContainer(List(Text("paragraph text"))),
+            elements = List(Text("paragraph text")),
             propertyDrawer = Some(
               PropertyDrawer(
                 List(
-                  Node(Key("k1"), Value(ElementsContainer(List(Text("v1"))))),
-                  Node(Key("k2"), Value(ElementsContainer(List(Text("v2")))))
+                  Node(Key("k1"), Value(List(Text("v1")))),
+                  Node(Key("k2"), Value(List(Text("v2"))))
                 )
               )
             ),
@@ -993,14 +967,14 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     val toParse = """|header|header 1|"""
     checkParser(
       toParse,
-      LogseqMarkdown(blocks =
+      Document(blocks =
         List(
           Table(rows =
             List(
               Cells(
                 List(
-                  Cell(ElementsContainer(List(Text("header")))),
-                  Cell(ElementsContainer(List(Text("header 1"))))
+                  Cell(List(Text("header"))),
+                  Cell(List(Text("header 1")))
                 )
               )
             )
@@ -1017,20 +991,20 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |row 1|row 1|"""
     checkParser(
       toParse,
-      LogseqMarkdown(blocks =
+      Document(blocks =
         List(
           Table(rows =
             List(
               Cells(
                 List(
-                  Cell(ElementsContainer(List(Text("header")))),
-                  Cell(ElementsContainer(List(Text("header 1"))))
+                  Cell(List(Text("header"))),
+                  Cell(List(Text("header 1")))
                 )
               ),
               Cells(
                 List(
-                  Cell(ElementsContainer(List(Text("row 1")))),
-                  Cell(ElementsContainer(List(Text("row 1"))))
+                  Cell(List(Text("row 1"))),
+                  Cell(List(Text("row 1")))
                 )
               )
             )
@@ -1047,19 +1021,19 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |row 1|row 1|"""
     checkParser(
       toParse,
-      LogseqMarkdown(
+      Document(
         blocks = List(
           MarkdownList.Unordered(items =
             List(
               MarkdownList.Item(
                 marker = MarkdownList.Item.Marker(value = "-"),
-                content = List(
+                blocks = List(
                   Table(rows =
                     List(
                       Cells(
                         List(
-                          Cell(ElementsContainer(List(Text("header")))),
-                          Cell(ElementsContainer(List(Text("header 1"))))
+                          Cell(List(Text("header"))),
+                          Cell(List(Text("header 1")))
                         )
                       )
                     )
@@ -1072,8 +1046,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
             List(
               Cells(
                 List(
-                  Cell(ElementsContainer(List(Text("row 1")))),
-                  Cell(ElementsContainer(List(Text("row 1"))))
+                  Cell(List(Text("row 1"))),
+                  Cell(List(Text("row 1")))
                 )
               )
             )
@@ -1090,25 +1064,25 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
   |row 1|row 1|"""
     checkParser(
       toParse,
-      LogseqMarkdown(blocks =
+      Document(blocks =
         List(
           MarkdownList.Unordered(items =
             List(
               MarkdownList.Item(
                 marker = MarkdownList.Item.Marker(value = "-"),
-                content = List(
+                blocks = List(
                   Table(rows =
                     List(
                       Cells(
                         List(
-                          Cell(ElementsContainer(List(Text("header")))),
-                          Cell(ElementsContainer(List(Text("header 1"))))
+                          Cell(List(Text("header"))),
+                          Cell(List(Text("header 1")))
                         )
                       ),
                       Cells(
                         List(
-                          Cell(ElementsContainer(List(Text("row 1")))),
-                          Cell(ElementsContainer(List(Text("row 1"))))
+                          Cell(List(Text("row 1"))),
+                          Cell(List(Text("row 1")))
                         ),
                         indentation = Some(Indentation(1, "  "))
                       )
@@ -1131,32 +1105,28 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |#tag|[link](http://example.com)|"""
     checkParser(
       toParse,
-      LogseqMarkdown(blocks =
+      Document(blocks =
         List(
           Table(rows =
             List(
               Cells(
                 List(
-                  Cell(ElementsContainer(List(Text("header")))),
-                  Cell(ElementsContainer(List(Text("header 1"))))
+                  Cell(List(Text("header"))),
+                  Cell(List(Text("header 1")))
                 )
               ),
               Cells(
                 List(
                   Cell(
-                    ElementsContainer(
-                      List(
-                        Emphasis(Emphasis.Marker.Bold("**"), ElementsContainer(List(Text("row 1"))))
-                      )
+                    List(
+                      Emphasis(Emphasis.Marker.Bold("**"), List(Text("row 1")))
                     )
                   ),
                   Cell(
-                    ElementsContainer(
-                      List(
-                        Emphasis(
-                          Emphasis.Marker.Italic("_"),
-                          ElementsContainer(List(Text("row 1")))
-                        )
+                    List(
+                      Emphasis(
+                        Emphasis.Marker.Italic("_"),
+                        List(Text("row 1"))
                       )
                     )
                   )
@@ -1165,15 +1135,11 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
               Cells(
                 List(
                   Cell(
-                    ElementsContainer(
-                      List(Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag")))
-                    )
+                    List(Link.Internal.Tag.WithoutBrackets(Link.Location.Internal.Page("tag")))
                   ),
                   Cell(
-                    ElementsContainer(
-                      List(
-                        Link.External(Link.Location.External("http://example.com"), Some("link"))
-                      )
+                    List(
+                      Link.External(Link.Location.External("http://example.com"), Some("link"))
                     )
                   )
                 )
@@ -1193,21 +1159,21 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 |row 1|row 1|"""
     checkParser(
       toParse,
-      LogseqMarkdown(blocks =
+      Document(blocks =
         List(
           Table(rows =
             List(
               Cells(
                 List(
-                  Cell(ElementsContainer(List(Text("header")))),
-                  Cell(ElementsContainer(List(Text("header 1"))))
+                  Cell(List(Text("header"))),
+                  Cell(List(Text("header 1")))
                 )
               ),
               Separator("|--|--|"),
               Cells(
                 List(
-                  Cell(ElementsContainer(List(Text("row 1")))),
-                  Cell(ElementsContainer(List(Text("row 1"))))
+                  Cell(List(Text("row 1"))),
+                  Cell(List(Text("row 1")))
                 )
               )
             )
@@ -1218,7 +1184,7 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
   }
 
   lazy val ctx = Context.default()
-  lazy val parser = new parser(ctx)
+  lazy val parser = new Parser(ctx)
 
   extension [T](r: POut[T])
     def isSuccess: Boolean = r match
@@ -1231,8 +1197,8 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
 
   def checkParser[T](
     toParse: String,
-    expected: => LogseqMarkdown,
-    parser: P[LogseqMarkdown] = parser.document
+    expected: => Document,
+    parser: P[Document] = parser.document
   ): Unit =
     parse(toParse, parser) match {
       case POut.Success(value, _, _, _) =>
@@ -1251,4 +1217,4 @@ class LogseqMarkdownParserTest extends munit.ScalaCheckSuite:
     ()
   )
 
-end LogseqMarkdownParserTest
+end DocumentParserTest

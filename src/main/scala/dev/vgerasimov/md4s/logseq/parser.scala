@@ -7,7 +7,7 @@ import ops.{ *, given }
 import dev.vgerasimov.slowparse.*
 import dev.vgerasimov.slowparse.Parsers.{ *, given }
 
-object parser:
+object Parser:
 
   /** Configuration of a Logseq Markdown document. */
   case class Context(
@@ -56,15 +56,15 @@ object parser:
     case Indentation(_, "") => None
     case x                  => Some(x)
 
-import parser.*
+import Parser.*
 
-class parser(ctx: Context = Context.default()):
+class Parser(ctx: Context = Context.default()):
 
-  def document: P[LogseqMarkdown] = evalAndLazyThen(delayedDocument)
+  def document: P[Document] = evalAndLazyThen(delayedDocument)
 
-  def delayedDocument: AndLazyThen[Option[PropertyDrawer], LogseqMarkdown] =
+  def delayedDocument: AndLazyThen[Option[PropertyDrawer], Document] =
     mapAndLazyThen(andLazyThen(propertyDrawer.?, block(minIndentation = 0).*)) {
-      case (properties, blocks) => LogseqMarkdown(blocks = blocks, propertyDrawer = properties)
+      case (properties, blocks) => Document(blocks = blocks, propertyDrawer = properties)
     }
 
   private def spacing: P[Spacing] = (tab | space).+.!.map(Spacing.apply)
@@ -75,16 +75,14 @@ class parser(ctx: Context = Context.default()):
     (c.map(IntentationSymbol.apply).rep(min = min, max = max) ~ !c)
       .map(sym => Indentation(sym.size, sym.map(_.value).mkString))
 
-  private def elementsContainerWithoutEmphasis: P[ElementsContainer] =
+  private def elementsContainerWithoutEmphasis: P[List[Element]] =
     choice(simpleBlock, timestamp, link, !eol ~ singleCharText).+.map(_.toList)
       .map(foldTexts[Element])
-      .map(ElementsContainer.apply)
 
-  private def elementsContainer: P[ElementsContainer] =
+  private def elementsContainer: P[List[Element]] =
     (choice(simpleBlock, timestamp, link, emphasis, !eol ~ singleCharText).* ~ eolOrEnd)
       .map(_.toList)
       .map(foldTexts[Element])
-      .map(ElementsContainer.apply)
 
   private def headedSection(
     headingMinLevel: Int,
@@ -106,10 +104,10 @@ class parser(ctx: Context = Context.default()):
                 headingMaxLevel = headingMaxLevel,
                 minIndentation = minIndentation
               ).*
-          ).map { case (indentation, heading, content) =>
+          ).map { case (indentation, heading, blocks) =>
             HeadedSection(
               heading = heading,
-              content = content,
+              blocks = blocks,
               indentation = maybeIndentation(indentation)
             )
           }
@@ -125,17 +123,17 @@ class parser(ctx: Context = Context.default()):
           Heading.Level(value = value, spacingAfter = spacing)
         }
 
-      (!listMarker ~ level ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer.? ~ propertyDrawer.?)
+      (!listMarker ~ level ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer ~ propertyDrawer.?)
         .map {
           case (
                 level: Heading.Level,
                 priority: Option[Priority],
                 status: Option[Status],
-                content: Option[ElementsContainer],
+                content: List[Element],
                 drawer: Option[PropertyDrawer]
               ) =>
             Heading(
-              content = content,
+              elements = content,
               level = level,
               status = status,
               priority = priority,
@@ -221,7 +219,7 @@ class parser(ctx: Context = Context.default()):
       ) ~ (priority ~ s0).? ~ (status ~ s0).? ~ elementsContainer ~ propertyDrawer.? ~ customProperties.* ~ planning.*)
         .map { case (ind, priority, status, content, drawer, customProperties, planning) =>
           Paragraph(
-            content = content,
+            elements = content,
             propertyDrawer = drawer,
             customProperties = customProperties,
             indentation = Some(ind),
@@ -233,10 +231,11 @@ class parser(ctx: Context = Context.default()):
 
   private def codeBlock: P[CodeBlock] =
     def surrounder = P("```")
-    (indentation() ~ surrounder ~ until(eol).!.? ~ eol ~ until(surrounder).! ~ surrounder ~ eolOrEnd)
-      .map {
-        case (indentation, metadata, content) =>
-          CodeBlock(content, metadata, indentation = maybeIndentation(indentation))
+    (indentation() ~ surrounder ~ until(eol).!.? ~ eol ~ until(
+      surrounder
+    ).! ~ surrounder ~ eolOrEnd)
+      .map { case (indentation, metadata, content) =>
+        CodeBlock(content, metadata, indentation = maybeIndentation(indentation))
       }
 
   private def beginEndBlock: P[BeginEndBlock] =
@@ -413,10 +412,9 @@ class parser(ctx: Context = Context.default()):
 
       def cells(minIndentation: Int = 0, maxIndentation: Int = Int.MaxValue): P[Cells] = {
         def cell: P[Cell] = {
-          def elementsContainer: P[ElementsContainer] =
+          def elementsContainer: P[List[Element]] =
             choice(timestamp, link, emphasis, !(P("|") | eol) ~ singleCharText).*.map(_.toList)
               .map(foldTexts[Element])
-              .map(ElementsContainer.apply)
           (elementsContainer ~ &(P("|"))).map(Cell.apply)
         }
 
@@ -520,9 +518,6 @@ class parser(ctx: Context = Context.default()):
         }
     }
 
-    def diary: P[Diary] =
-      (P("<%%(") ~ charsUntilIn("\n>") ~ P(")>")).map(Diary.apply)
-
     def repeaterMark: P[(RepeaterOrDelay.Value, RepeaterOrDelay.Unit) => RepeaterOrDelay] =
       (
         P("++").map(_ => RepeaterOrDelay.CatchUpRepeater.apply)
@@ -612,8 +607,7 @@ class parser(ctx: Context = Context.default()):
       )
 
     (
-      diary
-      | activeTimestampRange
+      activeTimestampRange
       | activeTimestamp
       | inactiveTimestampRange
       | inactiveTimestamp
@@ -633,7 +627,6 @@ class parser(ctx: Context = Context.default()):
             foldTexts[Element]
           )
       )
-        .map(ElementsContainer.apply)
         .map(v => Emphasis(marker, v))
     def bold: P[Emphasis] =
       nonNestable(P("**"), P("*"), Emphasis.Marker.Bold("**"))

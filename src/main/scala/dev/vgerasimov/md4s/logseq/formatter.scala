@@ -4,7 +4,7 @@ package logseq
 import models.*
 import ops.{ *, given }
 
-object formatter:
+object Formatter:
 
   private def formatMaybeOrEmpty[A](maybe: Option[A], format: A => String): String =
     maybe.map(format).getOrElse("")
@@ -26,8 +26,8 @@ object formatter:
   private def formatMaybeSpacing(maybeSpacing: Option[Spacing]): String =
     formatMaybeOrEmpty(maybeSpacing, format)
 
-  def format(document: LogseqMarkdown): String = document match
-    case LogseqMarkdown(maybePropertyDrawer, blocks) =>
+  def format(document: Document): String = document match
+    case Document(maybePropertyDrawer, blocks) =>
       val res = StringBuffer()
       maybePropertyDrawer.foreach(x => res.append(formatProperyDrawer(x)))
       if (blocks.nonEmpty)
@@ -60,18 +60,20 @@ object formatter:
         case external: External => formatExternalLink(external)
 
     element match
-      case ElementsContainer(elements) => concatWith(elements, format, "")
-      case Text(content)               => content
-      case Emphasis(marker, contents)  => marker.value + format(contents) + marker.value
-      case link: Link                  => formatLink(link)
-      case SimpleBlock.Video(Link.Location.External(url))    => s"{{video $url}}"
-      case x                           => throw new Exception(s"Unsupported inline element: $x")
+      case Text(content)              => content
+      case Emphasis(marker, contents) => marker.value + formatElements(contents) + marker.value
+      case link: Link                 => formatLink(link)
+      case SimpleBlock.Video(Link.Location.External(url)) => s"{{video $url}}"
+      case x => throw new Exception(s"Unsupported inline element: $x")
+
+  private[md4s] def formatElements(elements: List[Element]): String =
+    concatWith(elements, format, "")
 
   private def formatTable(table: Table): String = {
     import Table.*
     import Row.*
 
-    def formatCell(cell: Cell): String = s"${format(cell.content)}"
+    def formatCell(cell: Cell): String = s"${formatElements(cell.elements)}"
     def formatCells(cells: Cells): String = cells match
       case Cells(cells, maybeIndentation) =>
         maybeIndentation.map(format).getOrElse("") + cells.map(formatCell).mkString("|", "|", "|")
@@ -97,9 +99,9 @@ object formatter:
       maybeIndentation.foreach(x => res.append(format(x)))
       maybePriority.foreach(x => res.append(format(x)))
       maybeStatus.foreach(x => res.append(format(x)))
-      if (content.elements.nonEmpty)
+      if (content.nonEmpty)
         // if (!res.isEmpty()) res.append("\n")
-        res.append(format(content))
+        res.append(formatElements(content))
       maybePropertyDrawer.foreach(x => res.append("\n").append(formatProperyDrawer(x)))
       if (planning.nonEmpty)
         res.append("\n")
@@ -173,7 +175,6 @@ object formatter:
           res.toString()
 
     timestamp match
-      case Diary(value) => throw new Exception("Diary timestamp is not supported")
       case ActiveTimestamp(date, time, repeaterOrDelay) =>
         val res = StringBuffer()
         res.append("<")
@@ -221,7 +222,7 @@ object formatter:
           s"$value::${maybeSpacingAfter.map(format).getOrElse("")}"
 
       def formatValue(value: Value): String = value match
-        case Value(value) => format(value)
+        case Value(value) => formatElements(value)
 
       node match
         case Node(key, value, maybeIndentation) =>
@@ -241,4 +242,4 @@ object formatter:
   private def format(marker: MarkdownList.Item.Marker): String = marker match
     case MarkdownList.Item.Marker(value, spacingAfter) => value + format(spacingAfter)
 
-end formatter
+end Formatter

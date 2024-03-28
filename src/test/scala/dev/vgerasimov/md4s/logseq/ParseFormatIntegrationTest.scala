@@ -1,43 +1,77 @@
 package dev.vgerasimov.md4s
+package logseq
 
-import dev.vgerasimov.slowparse.POut.Success
-import dev.vgerasimov.slowparse.POut.Failure
+import models.*
+import ops.{ *, given }
 
-import java.nio.file.*
-import upickle.default.{ ReadWriter as RW, *, given }
-import dev.vgerasimov.md4s.logseq.models.*
-import dev.vgerasimov.md4s.logseq.formatter.*
-import scala.jdk.CollectionConverters.{ *, given }
+class ParseFormatIntegrationTest extends munit.ScalaCheckSuite {
 
-val pprint2 =
-  pprint.copy(
-    // additionalHandlers = {
-    //   // case logseq.models.Text(s) :: Nil => pprint.Tree.Literal(s)
-    //   // case logseq.models.Text(s)        => pprint.Tree.Literal(s)
-    // }
-  )
-// val parser = logseq.parser().delayedDocument
-val parser = logseq.parser().document
+  import dev.vgerasimov.md4s.logseq.Parser.*
+  import dev.vgerasimov.slowparse.{ P, POut }
 
-@main def run =
-  // parseAllLogseq
-  runSingleParsing
+  lazy val ctx = Context.default()
+  lazy val parser = new Parser(ctx)
 
-def parseAndPrint(text: String) =
-  parser(text) match
-    case Success(value, parsed, remaining, parserLabel) =>
-      None
-      // println(write(value))
-      pprint2.pprintln(remaining)
-    // pprint2.pprintln(value)
-    // println(logseq.raw.toRaw(value))
-    case Failure(message, parserLabel) =>
-      println(text)
-      println(s"Failed to parse: $message")
+  test("Text -> Parsing -> Formatting [1]") {
+    val toParse = """
+|  type:: [[Media/Movie]]
+|  alias:: Thor: Ragnarok
+|  status:: [[DONE]]
+|  rating:: 3
+|  done-date:: [[2017-11-09]],[[2024-03-08]]
+|-
+|- # Cast
+""".trim().stripMargin
+    parser.document(toParse) match
+      case POut.Success(toFormat, _, _, _) =>
+        val formatted = Formatter.format(toFormat)
+        assertEquals(formatted, toParse)
+      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
+  }
 
-def runSingleParsing =
-  var toParse = ""
-  toParse = """- #[[Andrew Huberman]]
+  test("Text -> Parsing -> Formatting [2]") {
+    val toParse = """
+- # heading
+  - ```clojure
+    (defn foo [x]
+      (inc x))
+    ```"""
+    parser.document(toParse) match
+      case POut.Success(toFormat, _, _, _) =>
+        val formatted = Formatter.format(toFormat)
+        assertEquals(formatted, toParse)
+      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
+  }
+
+  test("Text -> Parsing -> Formatting [3]") {
+    val toParse = """
+|  type:: [[Media/Movie]]
+|  author:: [[Кристофер Нолан]]
+|  status:: [[DONE]]
+|  alias:: Oppenheimer
+|  rating:: 5
+|  done-date:: [[2023-07-29]]
+|- DONE [[Oppenheimer]] in [[Cinema City]]
+|  SCHEDULED: <2023-07-29 Sat 19:00>  
+|- # Cast
+|	- [[Киллиан Мерфи]]
+|	- [[Мэтт Дэймон]]
+|	- [[Роберт Дауни мл.]]
+|	- [[Эмили Блант]]
+|	- [[Рами Малек]]
+|	- [[Флоренс Пью]]
+|	- [[Гари Олдман]]
+|	- others
+""".trim().stripMargin
+    parser.document(toParse) match
+      case POut.Success(toFormat, _, _, _) =>
+        val formatted = Formatter.format(toFormat)
+        assertEquals(formatted, toParse)
+      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
+  }
+
+  test("Text -> Parsing -> Formatting [4]") {
+    val toParse = """- #[[Andrew Huberman]]
 -
 - https://twitter.com/nootropicguy/status/1637917960378408960
 - ## SLEEP #Health/Sleep
@@ -135,77 +169,12 @@ def runSingleParsing =
 		- improve anaerobic running capacity
 		- reduce fatigue
 		- reduce body fat
-		- improve lean mass
-"""
-  // read An Introduction to Tracking Transactions with Ledger CLI.md as string
-  // toParse = scala.io.Source
-  //   .fromFile(
-  //     "/Users/vgerasimov/Logseq/pages/An Introduction to Tracking Transactions with Ledger CLI.md"
-  //   )
-  //   .mkString
-  // toParse = """hello `code` world""".stripMargin
-  parseAndPrint(toParse)
+		- improve lean mass"""
+    parser.document(toParse) match
+      case POut.Success(toFormat, _, _, _) =>
+        val formatted = Formatter.format(toFormat)
+        assertEquals(formatted, toParse)
+      case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
+  }
 
-def parseAllLogseq =
-  var times = List[(Path, Long)]()
-  val currentTime = System.currentTimeMillis()
-  var i = 0
-  Files
-    .walk(Paths.get("/Users/vgerasimov/Logseq/pages"))
-    .iterator()
-    .asScala
-    .filter(Files.isRegularFile(_))
-    .foreach(f => {
-      val text = scala.io.Source.fromFile(f.toFile).mkString
-      val currentTime = System.currentTimeMillis()
-      val parsed = parser(text)
-      times = times :+ (f, System.currentTimeMillis() - currentTime)
-      parsed match
-        case Success(value, parsed, remaining, parserLabel) => None
-        // case Success((None, _), _, _, _) => None
-        // case Success((Some(propertyDrawer), next), parsed, remaining, parserLabel) =>
-        //   if (propertyDrawer.nodes.exists(n =>
-        //       n.name == "type" && n.value.isDefined && n.value.get.elements.head
-        //         .isInstanceOf[ClassicInternalLink] && n.value.get.elements.head
-        //         .asInstanceOf[ClassicInternalLink]
-        //         .location
-        //         .isInstanceOf[Link.Location.Internal.Page]
-        //       && n.value.get.elements.head
-        //         .asInstanceOf[ClassicInternalLink]
-        //         .location
-        //         .asInstanceOf[Link.Location.Internal.Page]
-        //         .value == "Media/Movie"
-        //     ))
-        //       next() match
-        //         case Success(LogseqMarkdown(None, _), _, _, _) =>
-        //           println(s"[ERROR] Something went wrong: $f")
-        //         case Success(LogseqMarkdown(Some(propertyDrawer), blocks), _, _, _) =>
-        //           if (propertyDrawer.nodes.exists(n =>
-        //               n.name == "gid" && n.value.isDefined)) {
-        //                 println(s"[INFO] Page already has gid: $f")
-        //               } else {
-        //                 val gid = java.util.UUID.randomUUID().toString
-        //                 val newPropertyDrawer = PropertyDrawer(
-        //                   propertyDrawer.nodes :+ PropertyDrawer.Node(
-        //                     "gid",
-        //                     Some(InlineContainer(List(Text(gid))))
-        //                   )
-        //                 )
-        //                 val newDoc = LogseqMarkdown(blocks = blocks, propertyDrawer = Some(newPropertyDrawer))
-        //                 val newDocText = formatter.format(newDoc)
-        //                 val writer = new java.io.PrintWriter(f.toFile())
-        //                 writer.write(newDocText)
-        //                 writer.close()
-        //                 println(s"[INFO] Added gid to: $f")
-        //               }
-        //             i = i + 1
-        //           val newDoc = LogseqMarkdown(blocks = blocks, propertyDrawer = Some(propertyDrawer))
-        //         case Failure(message, _) =>
-        //           println(s"[ERROR] Failed to parse: $f")
-        case Failure(message, _) =>
-          println(s"[ERROR] Failed to parse: $f")
-    })
-  println(s"Found $i movies")
-  println(s"Average time: ${times.map(_._2).sum / times.length}ms")
-  println(s"Max time: ${times.max(ord = (l, r) => l._2.compare(r._2))}ms")
-  println(s"Time: ${System.currentTimeMillis() - currentTime}ms")
+}

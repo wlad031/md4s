@@ -3,12 +3,12 @@ package dev.vgerasimov.md4s.logseq
 import dev.vgerasimov.md4s.logseq.models.*
 import dev.vgerasimov.md4s.logseq.Updater.Input
 
-class Updater extends ((LogseqMarkdown, List[Updater.Input]) => LogseqMarkdown) {
+class Updater extends ((Document, List[Updater.Input]) => Document) {
 
   override def apply(
-    originalDocument: LogseqMarkdown,
+    originalDocument: Document,
     unputs: List[Updater.Input]
-  ): LogseqMarkdown = {
+  ): Document = {
     originalDocument.copy(blocks = originalDocument.blocks.map(updateBlock(_, unputs)))
   }
 
@@ -21,10 +21,10 @@ class Updater extends ((LogseqMarkdown, List[Updater.Input]) => LogseqMarkdown) 
       case None =>
         block match {
           case b @ HeadedSection(_, children, _) =>
-            b.copy(content = children.map(updateBlock(_, inputs)))
+            b.copy(blocks = children.map(updateBlock(_, inputs)))
           case b @ MarkdownList.Unordered(children, _) =>
             b.copy(items =
-              children.map(item => item.copy(content = item.content.map(updateBlock(_, inputs))))
+              children.map(item => item.copy(blocks = item.blocks.map(updateBlock(_, inputs))))
             )
           case b => b
         }
