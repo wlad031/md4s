@@ -4,16 +4,10 @@
       "path": "../slowparse"
     },
     {
-      "path": "../org4s"
-    },
-    {
       "path": "."
     },
     {
       "path": "../md4j"
-    },
-    {
-      "path": "../myhub-ril-indexer"
     }
   ],
   "settings": {

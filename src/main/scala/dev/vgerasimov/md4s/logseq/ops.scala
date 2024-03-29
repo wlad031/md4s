@@ -68,6 +68,35 @@ object ops {
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
 
+  extension (document: Document) {
+
+    def findBlockByPropertyNode(predicate: (PropertyDrawer.Node => Boolean)): Option[Block] =
+      findBlock {
+        case b @ HeadedSection(Heading(_, _, _, _, Some(PropertyDrawer(nodes))), blocks, _) 
+          if nodes.exists(predicate) => true
+        case b @ Paragraph(_, Some(PropertyDrawer(nodes)), _, _, _, _, _)
+          if nodes.exists(predicate) => true
+        case _ => false
+      }
+    
+    def findBlock(predicate: Block => Boolean): Option[Block] = {
+      def f(blocks: List[Block]): Option[Block] = {
+        blocks.foldLeft(Option.empty[Block])((acc, block) =>
+          acc.orElse {
+            block match {
+              case b if predicate(b) => Some(b)
+              case HeadedSection(_, blocks, _) => f(blocks)
+              case MarkdownList.Unordered(items, _) => f(items.flatMap(_.blocks))
+              case MarkdownList.Ordered(items, _) => f(items.flatMap(_.blocks))
+              case _ => None
+            }
+          }
+        )
+      }
+      f(document.blocks)
+    }
+  }
+
   /** Contains utilities for working with property-related models. */
   object properties {
     import PropertyDrawer.*

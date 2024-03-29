@@ -10,8 +10,8 @@ class ParseFormatIntegrationTest extends munit.ScalaCheckSuite {
   import dev.vgerasimov.slowparse.{ P, POut }
 
   lazy val ctx = Context.default()
-  lazy val formatter = Formatter()
   lazy val parser = new Parser(ctx)
+  lazy val formatter = Formatter()
 
   test("Text -> Parsing -> Formatting [1]") {
     val toParse = """
