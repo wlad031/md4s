@@ -10,6 +10,7 @@ class ParseFormatIntegrationTest extends munit.ScalaCheckSuite {
   import dev.vgerasimov.slowparse.{ P, POut }
 
   lazy val ctx = Context.default()
+  lazy val formatter = Formatter()
   lazy val parser = new Parser(ctx)
 
   test("Text -> Parsing -> Formatting [1]") {
@@ -24,7 +25,7 @@ class ParseFormatIntegrationTest extends munit.ScalaCheckSuite {
 """.trim().stripMargin
     parser.document(toParse) match
       case POut.Success(toFormat, _, _, _) =>
-        val formatted = Formatter.format(toFormat)
+        val formatted = formatter.format(toFormat)
         assertEquals(formatted, toParse)
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
   }
@@ -38,7 +39,7 @@ class ParseFormatIntegrationTest extends munit.ScalaCheckSuite {
     ```"""
     parser.document(toParse) match
       case POut.Success(toFormat, _, _, _) =>
-        val formatted = Formatter.format(toFormat)
+        val formatted = formatter.format(toFormat)
         assertEquals(formatted, toParse)
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
   }
@@ -65,7 +66,7 @@ class ParseFormatIntegrationTest extends munit.ScalaCheckSuite {
 """.trim().stripMargin
     parser.document(toParse) match
       case POut.Success(toFormat, _, _, _) =>
-        val formatted = Formatter.format(toFormat)
+        val formatted = formatter.format(toFormat)
         assertEquals(formatted, toParse)
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
   }
@@ -172,7 +173,7 @@ class ParseFormatIntegrationTest extends munit.ScalaCheckSuite {
 		- improve lean mass"""
     parser.document(toParse) match
       case POut.Success(toFormat, _, _, _) =>
-        val formatted = Formatter.format(toFormat)
+        val formatted = formatter.format(toFormat)
         assertEquals(formatted, toParse)
       case POut.Failure(message, _) => fail(s"$toParse not parsed: $message")
   }

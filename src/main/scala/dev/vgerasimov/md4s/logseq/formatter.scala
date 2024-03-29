@@ -4,7 +4,16 @@ package logseq
 import models.*
 import ops.{ *, given }
 
-object Formatter:
+trait Formatter {
+  def format(document: Document): String
+  def format(blocks: List[Block]): String
+}
+
+object Formatter {
+  def apply(): Formatter = FormatterImpl
+}
+
+private[logseq] object FormatterImpl extends Formatter {
 
   private def formatMaybeOrEmpty[A](maybe: Option[A], format: A => String): String =
     maybe.map(format).getOrElse("")
@@ -21,19 +30,19 @@ object Formatter:
   private def concatMaybesWith[A](ls: List[Option[A]], format: A => String, s: => String): String =
     ls.filter(_.isDefined).map(_.get).map(format).mkString(s)
 
-  private def formatBlockElements(blocks: List[Block]): String =
-    concatWithLineBreak(blocks, format)
   private def formatMaybeSpacing(maybeSpacing: Option[Spacing]): String =
     formatMaybeOrEmpty(maybeSpacing, format)
 
-  def format(document: Document): String = document match
+  override def format(document: Document): String = document match
     case Document(maybePropertyDrawer, blocks) =>
       val res = StringBuffer()
       maybePropertyDrawer.foreach(x => res.append(formatProperyDrawer(x)))
       if (blocks.nonEmpty)
         if (!res.isEmpty()) res.append("\n")
-        res.append(formatBlockElements(blocks))
+        res.append(format(blocks))
       res.toString()
+
+  override def format(blocks: List[Block]): String = blocks.map(format).mkString("\n")
 
   def format(element: Element): String =
     def formatLink(link: Link): String =
@@ -119,7 +128,7 @@ object Formatter:
       val res = StringBuffer()
       maybeIndentation.foreach(x => res.append(format(x)))
       res.append(format(heading))
-      if (content.nonEmpty) res.append("\n").append(formatBlockElements(content))
+      if (content.nonEmpty) res.append("\n").append(format(content))
       res.toString()
     case MarkdownList.Unordered(items, maybeIndentation) =>
       val indentation = maybeIndentation.map(format).getOrElse("")
@@ -232,7 +241,7 @@ object Formatter:
     propertyDrawer.nodes.map(formatNode).mkString("\n")
   }
   private def format(item: MarkdownList.Item): String = item match
-    case MarkdownList.Item(content, marker) => format(marker) + formatBlockElements(content)
+    case MarkdownList.Item(content, marker) => format(marker) + format(content)
   private def format(priority: Priority): String = priority match
     case Priority(value, spacingAfter) => s"#$value${formatMaybeSpacing(spacingAfter)}"
 
@@ -242,4 +251,4 @@ object Formatter:
   private def format(marker: MarkdownList.Item.Marker): String = marker match
     case MarkdownList.Item.Marker(value, spacingAfter) => value + format(spacingAfter)
 
-end Formatter
+}

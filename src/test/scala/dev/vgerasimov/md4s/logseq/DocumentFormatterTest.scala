@@ -6,45 +6,47 @@ import ops.{ *, given }
 
 class DocumentFormatterTest extends munit.ScalaCheckSuite {
 
+  private val underTest: FormatterImpl.type = FormatterImpl
+
   test("Text is formatted as text") {
     val toFormat = Text("Hello, world!")
     val expected = "Hello, world!"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Bold text is formatted as bold text") {
     val toFormat =
       Emphasis(Emphasis.Marker.Bold("**"), List(Text("Hello, world!")))
     val expected = "**Hello, world!**"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Italic text is formatted as italic text") {
     val toFormat =
       Emphasis(Emphasis.Marker.Italic("*"), List(Text("Hello, world!")))
     val expected = "*Hello, world!*"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Code text is formatted as code text") {
     val toFormat =
       Emphasis(Emphasis.Marker.Code("`"), List(Text("Hello, world!")))
     val expected = "`Hello, world!`"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("StrikeThrough text is formatted as strikethrough text") {
     val toFormat =
       Emphasis(Emphasis.Marker.StrikeThrough("~~"), List(Text("Hello, world!")))
     val expected = "~~Hello, world!~~"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Highlight text is formatted as highlighted text") {
     val toFormat =
       Emphasis(Emphasis.Marker.Highlight("=="), List(Text("Hello, world!")))
     val expected = "==Hello, world!=="
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Mixed emphasis is formatted correctly 1") {
@@ -55,7 +57,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
         Text("!")
       )
     val expected = "Hello, **world**!"
-    assertEquals(Formatter.formatElements(toFormat), expected)
+    assertEquals(underTest.formatElements(toFormat), expected)
   }
 
   test("Mixed emphasis is formatted correctly 2") {
@@ -67,13 +69,13 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
         Text("!")
       )
     val expected = "**Hello**, *world*!"
-    assertEquals(Formatter.formatElements(toFormat), expected)
+    assertEquals(underTest.formatElements(toFormat), expected)
   }
 
   test("Simple text paragraph is formatted as correctly") {
     val toFormat = Paragraph(List(Text("Hello, world!")))
     val expected = "Hello, world!"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Simple text paragraph with indentation is formatted as correctly") {
@@ -83,7 +85,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
         indentation = Some(Indentation(1, "  "))
       )
     val expected = "  Hello, world!"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Simple text paragraph with properties is formatted as correctly") {
@@ -99,7 +101,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
         )
       )
     val expected = "Hello, world!\nPROPERTY:: VALUE"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Simple text paragraph with multiple properties and indentation is formatted as correctly") {
@@ -122,7 +124,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
         )
       )
     val expected = "\t\tHello, world!\nPROPERTY:: VALUE\nANOTHER_PROPERTY:: ANOTHER_VALUE"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Simple headed section with single paragraph is formatted as correctly") {
@@ -134,7 +136,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
       List(Paragraph(List(Text("Hello, world!"))))
     )
     val expected = "# Hello, world!\nHello, world!"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Simple headed section with multiple paragraphs is formatted as correctly") {
@@ -149,7 +151,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
       )
     )
     val expected = "# Hello, world!\nHello, world!\nHello, world!"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Simple headed section with indentation is formatted as correctly") {
@@ -167,7 +169,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
       indentation = Some(Indentation(1, "  "))
     )
     val expected = "  # Hello, world!\n  Hello, world!"
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
   test("Table with different elements is formatted correctly") {
@@ -219,7 +221,7 @@ class DocumentFormatterTest extends munit.ScalaCheckSuite {
     val expected = """|header|header 1|
 |**row 1**|_row 1_|
 |#tag|[link](http://example.com)|"""
-    assertEquals(Formatter.format(toFormat), expected)
+    assertEquals(underTest.format(toFormat), expected)
   }
 
 }

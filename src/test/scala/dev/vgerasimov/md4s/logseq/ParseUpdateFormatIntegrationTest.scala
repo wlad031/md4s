@@ -14,7 +14,7 @@ class ParseUpdateFormatIntegrationTest extends munit.ScalaCheckSuite {
 
   lazy val ctx = Context.default()
   lazy val parser = new Parser(ctx)
-  lazy val formatter = Formatter
+  lazy val formatter = Formatter()
   lazy val updater = Updater()
 
   test("add property to heading") {
