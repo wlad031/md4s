@@ -70,25 +70,41 @@ object ops {
 
   extension (document: Document) {
 
+    def extractRecursively[D](
+      pf: PartialFunction[Block, List[DomainEntityBlock[Block, D]]]
+    ): (Option[Document], List[DomainEntityBlock[Block, D]]) = {
+      def recPf: PartialFunction[Block, List[DomainEntityBlock[Block, D]]] = pf.orElse {
+        case HeadedSection(_, blocks, _)      => blocks.flatMap(recPf)
+        case MarkdownList.Unordered(items, _) => items.flatMap(_.blocks).flatMap(recPf)
+        case _                                => List.empty[DomainEntityBlock[Block, D]]
+      }
+      document.blocks.flatMap(recPf) match {
+        case Nil => (None, Nil)
+        case ls  => (Some(document), ls)
+      }
+    }
+
     def findBlockByPropertyNode(predicate: (PropertyDrawer.Node => Boolean)): Option[Block] =
       findBlock {
-        case b @ HeadedSection(Heading(_, _, _, _, Some(PropertyDrawer(nodes))), blocks, _) 
-          if nodes.exists(predicate) => true
-        case b @ Paragraph(_, Some(PropertyDrawer(nodes)), _, _, _, _, _)
-          if nodes.exists(predicate) => true
+        case b @ HeadedSection(Heading(_, _, _, _, _, Some(PropertyDrawer(nodes)), _), blocks, _)
+            if nodes.exists(predicate) =>
+          true
+        case b @ Paragraph(_, _, _, _, Some(PropertyDrawer(nodes)), _, _)
+            if nodes.exists(predicate) =>
+          true
         case _ => false
       }
-    
+
     def findBlock(predicate: Block => Boolean): Option[Block] = {
       def f(blocks: List[Block]): Option[Block] = {
         blocks.foldLeft(Option.empty[Block])((acc, block) =>
           acc.orElse {
             block match {
-              case b if predicate(b) => Some(b)
-              case HeadedSection(_, blocks, _) => f(blocks)
+              case b if predicate(b)                => Some(b)
+              case HeadedSection(_, blocks, _)      => f(blocks)
               case MarkdownList.Unordered(items, _) => f(items.flatMap(_.blocks))
-              case MarkdownList.Ordered(items, _) => f(items.flatMap(_.blocks))
-              case _ => None
+              case MarkdownList.Ordered(items, _)   => f(items.flatMap(_.blocks))
+              case _                                => None
             }
           }
         )
@@ -189,9 +205,9 @@ object ops {
       private def appendPropertyNode(
         f: (Option[PropertyDrawer], PropertyDrawer.Node) => PropertyDrawer
       )(node: PropertyDrawer.Node): Block = block match {
-        case b @ HeadedSection(h @ Heading(_, _, _, _, maybePropertyDrawer), _, _) =>
+        case b @ HeadedSection(h @ Heading(_, _, _, _, _, maybePropertyDrawer, _), _, _) =>
           b.copy(heading = h.copy(propertyDrawer = Some(f(maybePropertyDrawer, node))))
-        case b @ Paragraph(_, maybePropertyDrawer, _, _, _, _, _) =>
+        case b @ Paragraph(_, _, _, _, maybePropertyDrawer, _, _) =>
           b.copy(propertyDrawer = Some(f(maybePropertyDrawer, node)))
         case b => b
       }
@@ -210,7 +226,7 @@ object ops {
       private def appendCustomProperties(
         f: (List[CustomProperties], CustomProperties) => List[CustomProperties]
       )(customProperties: CustomProperties): Block = block match {
-        case b @ Paragraph(_, _, customPropertiesList, _, _, _, _) =>
+        case b @ Paragraph(_, _, _, _, _, customPropertiesList, _) =>
           b.copy(customProperties = f(customPropertiesList, customProperties))
         case b => b
       }

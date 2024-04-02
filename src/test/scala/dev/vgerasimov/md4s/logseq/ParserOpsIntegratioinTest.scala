@@ -44,6 +44,7 @@ class ParserOpsIntegratioinTest extends munit.ScalaCheckSuite {
                     List(Text("heading 2")),
                     _,
                     _,
+                    _,
                     Some(
                       PropertyDrawer(
                         List(
@@ -55,6 +56,7 @@ class ParserOpsIntegratioinTest extends munit.ScalaCheckSuite {
                         )
                       )
                     ),
+                    _
                   ),
                   Nil,
                   _

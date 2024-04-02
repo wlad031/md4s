@@ -16,3 +16,8 @@ case class Document(
   propertyDrawer: Option[PropertyDrawer] = None,
   blocks: List[Block] = Nil
 ) extends CommonDocument
+
+case class DomainEntityBlock[B <: Block, D](
+  block: B,
+  entity: D
+)

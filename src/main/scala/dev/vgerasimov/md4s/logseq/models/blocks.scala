@@ -22,7 +22,9 @@ object blocks {
     elements: List[models.elements.Element] = Nil,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
-    propertyDrawer: Option[PropertyDrawer] = None
+    planning: List[Planning] = Nil,
+    propertyDrawer: Option[PropertyDrawer] = None,
+    customProperties: List[CustomProperties] = Nil,
   ) extends Block
   object Heading:
     case class Level(value: Int, override val spacingAfter: Spacing = Spacing.default())
@@ -30,11 +32,11 @@ object blocks {
 
   case class Paragraph(
     elements: List[models.elements.Element] = Nil,
-    propertyDrawer: Option[PropertyDrawer] = None,
-    customProperties: List[CustomProperties] = Nil,
-    planning: List[Planning] = Nil,
     status: Option[Status] = None,
     priority: Option[Priority] = None,
+    planning: List[Planning] = Nil,
+    propertyDrawer: Option[PropertyDrawer] = None,
+    customProperties: List[CustomProperties] = Nil,
     override val indentation: Option[Indentation] = None
   ) extends Block
       with MaybeIndentable

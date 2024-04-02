@@ -97,11 +97,11 @@ private[logseq] object FormatterImpl extends Formatter {
   def format(block: Block): String = block match
     case Paragraph(
           content,
-          maybePropertyDrawer,
-          maybeCustomProperties,
-          planning,
           maybeStatus,
           maybePriority,
+          planning,
+          maybePropertyDrawer,
+          maybeCustomProperties,
           maybeIndentation
         ) =>
       val res = StringBuffer()
@@ -116,7 +116,7 @@ private[logseq] object FormatterImpl extends Formatter {
         res.append("\n")
         planning.foreach(x => res.append(format(x)))
       res.toString()
-    case Heading(level, maybeContent, maybeStatus, maybePriority, maybePropertyDrawer) =>
+    case Heading(level, maybeContent, maybeStatus, maybePriority, planning, maybePropertyDrawer, maybeCustomProperties) =>
       val res = StringBuffer()
       res.append(format(level))
       maybePriority.foreach(x => res.append(format(x)))
