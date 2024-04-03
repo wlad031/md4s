@@ -231,6 +231,12 @@ object ops {
         case b => b
       }
 
+      def set(elements: List[Element]): Block = block match {
+        case b @ HeadedSection(heading, _, _) =>
+          b.copy(heading = heading.copy(elements = elements))
+        case b: Paragraph => b.copy(elements = elements)
+        case b            => b
+      }
     }
 
     object table {
