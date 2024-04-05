@@ -70,6 +70,8 @@ object ops {
 
   extension (document: Document) {
 
+    def append(blocks: List[Block]): Document = document.copy(blocks = document.blocks ++ blocks)
+
     def extractRecursively[D](
       pf: PartialFunction[Block, List[DomainEntityBlock[Block, D]]]
     ): (Option[Document], List[DomainEntityBlock[Block, D]]) = {
@@ -153,8 +155,14 @@ object ops {
 
       /** Checks if the property drawer has a node with the given key and a non-empty value. */
       def hasNonEmpty(key: String): Boolean = get(key).filter {
-        case Node(_, Value(Text(value) :: Nil), _) => value.nonEmpty
-        case _                                     => false
+        case Node(_, Value.Classic(Text(value) :: Nil), _) => value.nonEmpty
+        case Node(
+              _,
+              Value.CommaSeparated(Value.CommaSeparated.SpacedElement(Text(value), _, _) :: Nil),
+              _
+            ) =>
+          value.nonEmpty
+        case _ => false
       }.isDefined
     }
 
@@ -183,7 +191,7 @@ object ops {
 
     /** Creates a property drawer node with the given key and simple text value. */
     def node(key: String, value: String): Node =
-      Node(Node.Key(key), Node.Value(List(Text(value))))
+      Node(Node.Key(key), Node.Value.Classic(List(Text(value))))
   }
 
   /** Contains utilities for working with [[Block]]s. */

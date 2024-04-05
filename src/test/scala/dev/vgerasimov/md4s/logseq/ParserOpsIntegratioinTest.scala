@@ -26,7 +26,7 @@ class ParserOpsIntegratioinTest extends munit.ScalaCheckSuite {
         val actual = document.findBlockByPropertyNode {
           case PropertyDrawer.Node(
                 PropertyDrawer.Node.Key("id", _),
-                PropertyDrawer.Node.Value(elements),
+                PropertyDrawer.Node.Value.Classic(elements),
                 _
               ) if elements.exists {
                 case Text("20") => true
@@ -50,7 +50,7 @@ class ParserOpsIntegratioinTest extends munit.ScalaCheckSuite {
                         List(
                           PropertyDrawer.Node(
                             PropertyDrawer.Node.Key("id", _),
-                            PropertyDrawer.Node.Value(List(Text("20"))),
+                            PropertyDrawer.Node.Value.Classic(List(Text("20"))),
                             _
                           )
                         )

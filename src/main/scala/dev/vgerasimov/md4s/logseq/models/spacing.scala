@@ -24,6 +24,14 @@ object spacing {
     def spacingAfter: Option[Spacing] = None
   }
 
+  trait LeftSpaced {
+    def spacingBefore: Spacing = Spacing.default()
+  }
+
+  trait MaybeLeftSpaced {
+    def spacingBefore: Option[Spacing] = None
+  }
+
   case class Indentation(
     level: Int = Indentation.default.level,
     value: String = Indentation.default.value

@@ -33,7 +33,7 @@ object Parser:
       val headingMaxLevel: Int =
         6
       val commaSeparatedNodeProperties: Set[String] =
-        Set("tags", "file", "alias", "id", "created", "modified")
+        Set("tags")
       val aliasNodeProperty: String =
         "alias"
       val knownLinkProtocols: Set[String] =
@@ -163,11 +163,35 @@ class Parser(ctx: Context = Context.default()):
       def key: P[Key] =
         (until(P("::") | eol).! ~ P("::") ~ spacing.?)
           .map { case (value, maybeSpacing) => Key(value, maybeSpacing) }
-      def value: P[Value] = elementsContainer.map(Value.apply)
+
+      object value {
+        import Value.*
+
+        def classic: P[Classic] =
+          elementsContainer.map(Classic.apply)
+
+        def commaSeparated: P[CommaSeparated] =
+          ((spacing.? ~ choice(
+            timestamp,
+            link,
+            emphasis,
+            (!(eol | (ws0 ~ P(","))) ~ singleCharText).+.map(_.map(_.content).mkString)
+              .map(Text.apply)
+          ) ~ spacing.?).rep(sep = Some(P(","))) ~ eolOrEnd)
+            .map(_.toList)
+            .map(_.map { case (beforeSpacing, element, afterSpacing) =>
+              CommaSeparated
+                .SpacedElement(element, spacingBefore = beforeSpacing, spacingAfter = afterSpacing)
+            })
+            .map(CommaSeparated.apply)
+      }
 
       // There is no ~ eolOrEnd becase value uses elementsContainer and it already has eolOrEnd
-      (indentation(min = 0) ~ key ~ value)
-        .map { case (indentation, key, value) =>
+      (indentation(min = 0) ~ key.andThenFlatMap(k => {
+        if (ctx.commaSeparatedNodeProperties.contains(k.value)) value.commaSeparated
+        else value.classic
+      }))
+        .map { case (indentation, (key, value)) =>
           Node(key = key, value = value, indentation = maybeIndentation(indentation))
         }
     }

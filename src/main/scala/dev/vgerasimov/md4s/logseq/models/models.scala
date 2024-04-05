@@ -2,7 +2,9 @@ package dev.vgerasimov.md4s
 package logseq
 package models
 
-import common.models.{ Document as CommonDocument }
+import java.nio.file.Path
+
+import common.models.{ Document as CommonDocument, DocumentWithPath as CommonDocumentWithPath }
 
 import blocks.Block
 import properties.PropertyDrawer
@@ -21,3 +23,8 @@ case class DomainEntityBlock[B <: Block, D](
   block: B,
   entity: D
 )
+
+case class DocumentWithPath(
+  document: Document,
+  path: Path
+) extends CommonDocumentWithPath[Document](document, path)

@@ -759,6 +759,104 @@ class DocumentParserTest extends munit.ScalaCheckSuite:
     )
   }
 
+  test("document with comma separated properties") {
+    import PropertyDrawer.*
+    import Node.*
+    val toParse = """tags:: v2.1, v2.2 ,  v2.3 """.trim().stripMargin
+    checkParser(
+      toParse,
+      Document(
+        blocks = List(),
+        propertyDrawer = Some(
+          PropertyDrawer(
+            List(
+              Node(
+                Key("tags"),
+                Value.CommaSeparated(
+                  List(
+                    Value.CommaSeparated.SpacedElement(Text("v2.1")),
+                    Value.CommaSeparated.SpacedElement(Text("v2.2"), spacingBefore = Some(Spacing(" ")), spacingAfter = Some(Spacing(" "))),
+                    // FIXME: It has be spacing after, but it is not parsed for some reason
+                    Value.CommaSeparated.SpacedElement(Text("v2.3"), spacingBefore = Some(Spacing("  ")))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
+  test("document with properties including comma separated") {
+    import PropertyDrawer.*
+    import Node.*
+    val toParse = """
+|k1:: v1
+|tags:: v2.1,v2.2,v2.3
+|# Heading 1
+|k3:: v3
+|## Heading 2
+|tags:: v4
+|text""".trim().stripMargin
+    checkParser(
+      toParse,
+      Document(
+        blocks = List(
+          HeadedSection(
+            heading = h(
+              "Heading 1",
+              1,
+              propertyDrawer = Some(
+                PropertyDrawer(
+                  List(Node(Key("k3"), Value(List(Text("v3")))))
+                )
+              )
+            ),
+            List(
+              HeadedSection(
+                heading = h(
+                  "Heading 2",
+                  2,
+                  propertyDrawer = Some(
+                    PropertyDrawer(
+                      List(
+                        Node(
+                          Key("tags"),
+                          Value.CommaSeparated(List(Value.CommaSeparated.SpacedElement(Text("v4"))))
+                        )
+                      )
+                    )
+                  )
+                ),
+                blocks = List(
+                  Paragraph(List(Text("text")))
+                )
+              )
+            )
+          )
+        ),
+        propertyDrawer = Some(
+          PropertyDrawer(
+            List(
+              Node(Key("k1"), Value(List(Text("v1")))),
+              Node(
+                Key("tags"),
+                Value.CommaSeparated(
+                  List(
+                    Value.CommaSeparated.SpacedElement(Text("v2.1")),
+                    Value.CommaSeparated.SpacedElement(Text("v2.2")),
+                    Value.CommaSeparated.SpacedElement(Text("v2.3"))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  }
+
   test("Some more or less complex document is parsed correctly") {
     import PropertyDrawer.*
     import Node.*

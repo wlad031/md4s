@@ -30,7 +30,25 @@ object properties {
         override val spacingAfter: Option[Spacing] = Some(Spacing(" "))
       ) extends MaybeRightSpaced
 
-      case class Value(elements: List[Element])
+      sealed trait Value
+
+      object Value {
+
+        def apply(elements: List[Element]): Value.Classic = Value.Classic(elements)
+
+        case class Classic(elements: List[Element]) extends Value
+
+        case class CommaSeparated(elements: List[CommaSeparated.SpacedElement]) extends Value
+
+        object CommaSeparated {
+          case class SpacedElement(
+            element: Element,
+            override val spacingBefore: Option[Spacing] = None,
+            override val spacingAfter: Option[Spacing] = None
+          ) extends MaybeLeftSpaced,
+                MaybeRightSpaced
+        }
+      }
     }
   }
 

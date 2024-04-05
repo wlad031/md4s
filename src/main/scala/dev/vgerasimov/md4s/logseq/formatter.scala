@@ -231,7 +231,17 @@ private[logseq] object FormatterImpl extends Formatter {
           s"$value::${maybeSpacingAfter.map(format).getOrElse("")}"
 
       def formatValue(value: Value): String = value match
-        case Value(value) => formatElements(value)
+        case Value.Classic(value) => formatElements(value)
+        case Value.CommaSeparated(items) => {
+          def formatItem(item: Value.CommaSeparated.SpacedElement): String = {
+            val res = StringBuffer()
+            item.spacingBefore.foreach(x => res.append(format(x)))
+            res.append(format(item.element))
+            item.spacingAfter.foreach(x => res.append(format(x)))
+            res.toString()
+          }
+          items.map(formatItem).mkString(",")
+        }
 
       node match
         case Node(key, value, maybeIndentation) =>
