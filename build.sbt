@@ -23,9 +23,10 @@ val root = project
     libraryDependencies ++= {
       val munitVersion = "1.0.0-M3"
       Seq(
+        "dev.vgerasimov" %% "common-scala"     % "0.1.0",
         "dev.vgerasimov" %% "slowparse"        % "0.2.1",
         "com.lihaoyi"    %% "pprint"           % "0.7.0",
-        "com.lihaoyi" %% "upickle" % "3.2.0",
+        "com.lihaoyi"    %% "upickle"          % "3.2.0",
         "org.scalameta"  %% "munit"            % munitVersion % Test,
         "org.scalameta"  %% "munit-scalacheck" % munitVersion % Test
       )
