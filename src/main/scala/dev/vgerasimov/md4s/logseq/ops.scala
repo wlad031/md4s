@@ -68,9 +68,14 @@ object ops {
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
 
+  import properties.setOrCreate
+
   extension (document: Document) {
 
     def append(blocks: List[Block]): Document = document.copy(blocks = document.blocks ++ blocks)
+
+    def setDocumentPropertyValue(key: String, value: String): Document =
+      document.copy(propertyDrawer = Some(document.propertyDrawer.setOrCreate(key, value)))
 
     def extractRecursively[D](
       pf: PartialFunction[Block, List[DomainEntityBlock[Block, D]]]
@@ -150,6 +155,21 @@ object ops {
           k == key
         }
 
+      def set(key: String, value: String): PropertyDrawer = {
+        get(key) match {
+          case Some(node) => {
+            propertyDrawer.copy(
+              nodes = propertyDrawer.nodes.map {
+                case n if n == node =>
+                  n.copy(value = Value.Classic(List(Text(value))))
+                case n => n
+              }
+            )
+          }
+          case None => append(node(key, value))
+        }
+      }
+
       /** Checks if the property drawer has a node with the given key. */
       def has(key: String): Boolean = get(key).isDefined
 
@@ -187,6 +207,11 @@ object ops {
           case None                 => PropertyDrawer(List(node))
           case Some(propertyDrawer) => propertyDrawer.appendIfDoesntHave(node)
         }
+
+      def setOrCreate(key: String, value: String): PropertyDrawer = maybePropertyDrawer match {
+        case None                 => PropertyDrawer(List(Node(Key(key), Value(List(Text(value))))))
+        case Some(propertyDrawer) => propertyDrawer.set(key, value)
+      }
     }
 
     /** Creates a property drawer node with the given key and simple text value. */
