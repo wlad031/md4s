@@ -3,6 +3,7 @@ package logseq
 package models
 
 import java.nio.file.Path
+import java.nio.channels.{ FileLock, FileChannel }
 
 import common.models.{ Document as CommonDocument, DocumentWithPath as CommonDocumentWithPath }
 
@@ -26,5 +27,7 @@ case class DomainEntityBlock[B <: Block, D](
 
 case class DocumentWithPath(
   document: Document,
-  path: Path
-) extends CommonDocumentWithPath[Document](document, path)
+  path: Path,
+  channel: Option[FileChannel],
+  lock: Option[FileLock]
+) extends CommonDocumentWithPath[Document](document, path, channel, lock)
