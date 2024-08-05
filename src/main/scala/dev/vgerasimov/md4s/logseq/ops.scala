@@ -74,8 +74,11 @@ object ops {
 
     def append(blocks: List[Block]): Document = document.copy(blocks = document.blocks ++ blocks)
 
+    def setDocumentProperty(node: PropertyDrawer.Node): Document =
+      document.copy(propertyDrawer = Some(document.propertyDrawer.setOrCreate(node)))
+
     def setDocumentPropertyValue(key: String, value: String): Document =
-      document.copy(propertyDrawer = Some(document.propertyDrawer.setOrCreate(key, value)))
+      setDocumentProperty(properties.node(key, value))
 
     def extractRecursively[D](
       pf: PartialFunction[Block, List[DomainEntityBlock[Block, D]]]
@@ -155,14 +158,13 @@ object ops {
           k == key
         }
 
-      def set(key: String, value: String): PropertyDrawer = {
+      def set(key: String, value: Value): PropertyDrawer = {
         get(key) match {
           case Some(node) => {
             propertyDrawer.copy(
               nodes = propertyDrawer.nodes.map {
-                case n if n == node =>
-                  n.copy(value = Value.Classic(List(Text(value))))
-                case n => n
+                case n if n == node => n.copy(value = value)
+                case n              => n
               }
             )
           }
@@ -208,15 +210,18 @@ object ops {
           case Some(propertyDrawer) => propertyDrawer.appendIfDoesntHave(node)
         }
 
-      def setOrCreate(key: String, value: String): PropertyDrawer = maybePropertyDrawer match {
-        case None                 => PropertyDrawer(List(Node(Key(key), Value(List(Text(value))))))
-        case Some(propertyDrawer) => propertyDrawer.set(key, value)
+      def setOrCreate(node: PropertyDrawer.Node): PropertyDrawer = maybePropertyDrawer match {
+        case None                 => PropertyDrawer(List(node))
+        case Some(propertyDrawer) => propertyDrawer.set(node.key.value, node.value)
       }
     }
 
     /** Creates a property drawer node with the given key and simple text value. */
     def node(key: String, value: String): Node =
-      Node(Node.Key(key), Node.Value.Classic(List(Text(value))))
+      node(key, Node.Value.Classic(List(Text(value))))
+
+    def node(key: String, value: Node.Value): Node =
+      Node(Node.Key(key), value)
   }
 
   /** Contains utilities for working with [[Block]]s. */
