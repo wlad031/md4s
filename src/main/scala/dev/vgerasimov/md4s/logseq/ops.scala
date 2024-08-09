@@ -68,17 +68,21 @@ object ops {
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
 
-  import properties.setOrCreate
 
   extension (document: Document) {
 
     def append(blocks: List[Block]): Document = document.copy(blocks = document.blocks ++ blocks)
 
     def setDocumentProperty(node: PropertyDrawer.Node): Document =
+      import properties.setOrCreate
       document.copy(propertyDrawer = Some(document.propertyDrawer.setOrCreate(node)))
 
     def setDocumentPropertyValue(key: String, value: String): Document =
       setDocumentProperty(properties.node(key, value))
+
+    def removeDocumentProperty(key: String): Document =
+      import properties.remove
+      document.copy(propertyDrawer = document.propertyDrawer.map(_.remove(key)))
 
     def extractRecursively[D](
       pf: PartialFunction[Block, List[DomainEntityBlock[Block, D]]]
@@ -171,6 +175,9 @@ object ops {
           case None => append(node(key, value))
         }
       }
+
+      def remove(key: String): PropertyDrawer =
+        propertyDrawer.copy(nodes = propertyDrawer.nodes.filterNot(_.key.value == key))
 
       /** Checks if the property drawer has a node with the given key. */
       def has(key: String): Boolean = get(key).isDefined
