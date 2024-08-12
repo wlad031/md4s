@@ -68,7 +68,6 @@ object ops {
   private[md4s] def foldTexts[A >: Text](objects: List[A]): List[A] =
     fold[A, Text](objects, _ ++ _)
 
-
   extension (document: Document) {
 
     def append(blocks: List[Block]): Document = document.copy(blocks = document.blocks ++ blocks)
@@ -157,10 +156,12 @@ object ops {
       def :: (node: Node): PropertyDrawer = prepend(node)
 
       /** Gets a node by key. */
-      def get(key: String): Option[Node] =
-        propertyDrawer.nodes.find { case Node(Key(k, _), _, _) =>
-          k == key
-        }
+      def get(key: String): Option[Node] = get(key) { case n => n }
+
+      def get[A](key: String)(pf: PartialFunction[Node, A]): Option[A] =
+        propertyDrawer.nodes
+          .find { case Node(Key(k, _), _, _) => k == key }
+          .flatMap(pf.lift)
 
       def set(key: String, value: Value): PropertyDrawer = {
         get(key) match {
