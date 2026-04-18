@@ -24,7 +24,7 @@ foo:: bar"""
       case POut.Success(document @ Document(_, ls), _, _, _) =>
         val b = ls.head
         val newBlock = b.appendPropertyNode(node("baz", "qux"))
-        val newDocument = updater.update(document, List(Updater.Change(b, newBlock)))
+        val newDocument = updater.update(document, List(Updater.Change.Replacement(b, newBlock)))
         val actual = formatter.format(newDocument)
         assertEquals(actual, """# heading
 foo:: bar
