@@ -37,8 +37,8 @@ private[logseq] object FormatterImpl extends Formatter {
     case Document(maybePropertyDrawer, blocks) =>
       val res = StringBuffer()
       maybePropertyDrawer.foreach(x => res.append(formatProperyDrawer(x)))
-      if (blocks.nonEmpty)
-        if (!res.isEmpty()) res.append("\n")
+      if blocks.nonEmpty then
+        if !res.isEmpty() then res.append("\n")
         res.append(format(blocks))
       res.toString()
 
@@ -108,11 +108,11 @@ private[logseq] object FormatterImpl extends Formatter {
       maybeIndentation.foreach(x => res.append(format(x)))
       maybePriority.foreach(x => res.append(format(x)))
       maybeStatus.foreach(x => res.append(format(x)))
-      if (content.nonEmpty)
+      if content.nonEmpty then
         // if (!res.isEmpty()) res.append("\n")
         res.append(formatElements(content))
       maybePropertyDrawer.foreach(x => res.append("\n").append(formatProperyDrawer(x)))
-      if (planning.nonEmpty)
+      if planning.nonEmpty then
         res.append("\n")
         planning.foreach(x => res.append(format(x)))
       res.toString()
@@ -128,7 +128,7 @@ private[logseq] object FormatterImpl extends Formatter {
       val res = StringBuffer()
       maybeIndentation.foreach(x => res.append(format(x)))
       res.append(format(heading))
-      if (content.nonEmpty) res.append("\n").append(format(content))
+      if content.nonEmpty then res.append("\n").append(format(content))
       res.toString()
     case MarkdownList.Unordered(items, maybeIndentation) =>
       val indentation = maybeIndentation.map(format).getOrElse("")

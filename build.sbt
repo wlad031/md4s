@@ -1,7 +1,7 @@
 val root = project
   .in(file("."))
   .settings(
-    scalaVersion := "3.3.1",
+    scalaVersion := "3.8.3",
     organization := "dev.vgerasimov",
     name := "md4s",
     version := "0.1.0",

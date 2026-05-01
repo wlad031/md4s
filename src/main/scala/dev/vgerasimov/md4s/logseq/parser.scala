@@ -94,7 +94,7 @@ class Parser(ctx: Context = Context.default()):
     minIndentation: Int,
     listMinLevel: Int
   ): P[HeadedSection] =
-    if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel)
+    if headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel then
       fail[HeadedSection]
     else
       &(indentation(min = minIndentation) ~ heading(headingMinLevel, headingMaxLevel)).flatMap {
@@ -118,7 +118,7 @@ class Parser(ctx: Context = Context.default()):
       }
 
   private def heading(headingMinLevel: Int, headingMaxLevel: Int): P[Heading] =
-    if (headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel) fail[Heading]
+    if headingMinLevel > ctx.headingMaxLevel || headingMinLevel > headingMaxLevel then fail[Heading]
     else
       def level: P[Heading.Level] =
         def chars: P[Int] =
@@ -188,7 +188,7 @@ class Parser(ctx: Context = Context.default()):
 
       // There is no ~ eolOrEnd becase value uses elementsContainer and it already has eolOrEnd
       (indentation(min = 0) ~ key.andThenFlatMap(k => {
-        if (ctx.commaSeparatedNodeProperties.contains(k.value)) value.commaSeparated
+        if ctx.commaSeparatedNodeProperties.contains(k.value) then value.commaSeparated
         else value.classic
       }))
         .map { case (indentation, (key, value)) =>
@@ -216,7 +216,7 @@ class Parser(ctx: Context = Context.default()):
     listMaxLevel: Int,
     minIndentation: Int
   ): P[MarkdownList] =
-    if (listMinLevel > ctx.listMaxLevel || listMinLevel > listMaxLevel)
+    if listMinLevel > ctx.listMaxLevel || listMinLevel > listMaxLevel then
       fail[MarkdownList]
     else
       &(indentation(min = listMinLevel) ~ listMarker).flatMap { case (preIndentation, preMarker) =>
@@ -289,7 +289,7 @@ class Parser(ctx: Context = Context.default()):
     listMinLevel: Int = 0,
     listMaxLevel: Int = ctx.listMaxLevel
   ): P[Block] =
-    if (minIndentation > 16) fail[Block]
+    if minIndentation > 16 then fail[Block]
     else
       choice(
         list(listMinLevel, listMaxLevel, minIndentation),

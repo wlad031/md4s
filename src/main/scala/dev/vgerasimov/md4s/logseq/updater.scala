@@ -32,7 +32,7 @@ class Updater {
     document.copy(blocks = document.blocks.map(updateBlock(_, changes)) ++ changes.map {
       case Change.Append(block) => Some(block)
       case _                    => None
-    }.filterNonEmpty)
+    }.flatten)
   }
 
   private def updateBlock(block: Block, changes: List[Updater.Change]): Block = {

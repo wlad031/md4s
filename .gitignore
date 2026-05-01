@@ -9,3 +9,4 @@ app/
 project/*
 !project/build.properties
 !project/plugins.sbt
+/local-m2/

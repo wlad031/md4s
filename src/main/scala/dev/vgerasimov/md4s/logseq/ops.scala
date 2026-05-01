@@ -18,7 +18,7 @@ object ops {
           case x if aIsB(x) =>
             ls match {
               case ::(head, next) =>
-                if (aIsB(head))
+                if aIsB(head) then
                   op(head.asInstanceOf[B], x.asInstanceOf[B]) :: next
                 else x :: head :: next
               case Nil => List(x)
