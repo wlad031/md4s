@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/java:1-17-bullseye
+FROM mcr.microsoft.com/devcontainers/java:1-17-bookworm
 
 ARG USERNAME=vscode
 ARG TEA_VERSION=0.14.0
