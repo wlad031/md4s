@@ -1,3 +1,7 @@
+val giteaBase = sys.env.getOrElse("GITEA_URL", "https://gitea.local.vgerasimov.dev").stripSuffix("/")
+val giteaMaven = s"$giteaBase/api/packages/wlad031/maven"
+val giteaHost = new java.net.URI(giteaBase).getHost
+
 val root = project
   .in(file("."))
   .settings(
@@ -5,7 +9,16 @@ val root = project
     organization := "dev.vgerasimov",
     name := "md4s",
     version := "0.1.0",
-    resolvers += Resolver.mavenLocal,
+    resolvers ++= Seq(
+      Resolver.mavenLocal,
+      "Gitea Maven (wlad031)" at giteaMaven,
+    ),
+    publishTo := Some("Gitea Maven" at giteaMaven),
+    publishMavenStyle := true,
+    credentials ++= (for {
+      user <- sys.env.get("GITEA_USER")
+      token <- sys.env.get("GITEA_TOKEN")
+    } yield Credentials("Gitea Package API", giteaHost, user, token)).toSeq,
     scalacOptions ++= Seq(
       "-rewrite",
       "-source", "future",
