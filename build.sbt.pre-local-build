@@ -5,7 +5,8 @@ val root = project
     organization := "dev.vgerasimov",
     name := "md4s",
     version := "0.1.0",
-    resolvers += Resolver.mavenLocal,
+    githubOwner := "wlad031",
+    githubRepository := "md4s",
     scalacOptions ++= Seq(
       "-rewrite",
       "-source", "future",
@@ -17,6 +18,7 @@ val root = project
     ),
     resolvers ++= Seq(
       "jitpack" at "https://jitpack.io",
+      Resolver.githubPackages("wlad031"),
     ),
     libraryDependencies ++= {
       val munitVersion = "1.0.0-M3"
